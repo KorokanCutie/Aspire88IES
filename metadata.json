@@ -1,0 +1,6 @@
+{
+  "name": "Aspire88 Estates Corporation Integrated Enterprise System",
+  "description": "A mobile-responsive, production-ready web application dashboard for a real estate broker company, featuring multi-role access control (Admin, Broker, Agent, Treasurer), duplicate client detection, appointment management, project tracking, and free maps.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
