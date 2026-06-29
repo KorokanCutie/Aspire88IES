@@ -1,959 +1,863 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { Profile, Developer, Project, Client, DuplicateConflict, Appointment } from './types';
+import { db } from './db';
+import { sendEmail } from './resend';
+import { ToastProvider, useToast } from './components/Toast';
+import { PstClock } from './components/PstClock';
+import { AlertDialog } from './components/AlertDialog';
+import { LoginForm } from './components/LoginForm';
+import { ForcePasswordChange } from './components/ForcePasswordChange';
+import { DashboardStats } from './components/DashboardStats';
+import { ProfilesManager } from './components/ProfilesManager';
+import { ClientsManager } from './components/ClientsManager';
+import { ConflictsManager } from './components/ConflictsManager';
+import { ProjectsManager } from './components/ProjectsManager';
+import { AppointmentsManager } from './components/AppointmentsManager';
+import { AuditLogsManager } from './components/AuditLogsManager';
+import { TodayAppointments } from './components/TodayAppointments';
+import { MyProfileManager } from './components/MyProfileManager';
+import { SecurityAndNotificationsManager } from './components/SecurityAndNotificationsManager';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Building2, 
-  LayoutDashboard, 
-  Users, 
-  Building, 
-  UserCheck, 
-  ShieldAlert, 
-  Calendar, 
-  Settings, 
-  LogOut, 
-  Lock, 
-  Menu, 
+import {
+  Building,
+  KeyRound,
+  Shield,
+  Users,
+  UserCheck,
+  Scale,
+  Calendar,
+  Grid,
+  Database,
+  Terminal,
+  LogOut,
+  ChevronRight,
+  ShieldCheck,
+  Smartphone,
+  Menu,
   X,
+  Sparkles,
+  HelpCircle,
+  BarChart3,
+  Sun,
+  Moon,
+  Settings,
   User,
-  Eye,
-  EyeOff,
-  Briefcase
+  TrendingUp,
+  ShieldAlert,
 } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { AppProperties, updateAppProperties } from './appProperties';
 
-import { db, encryptPassword } from './db';
-import { UserProfile, Developer, Project, Client, DuplicateConflict, Appointment, UserRole } from './types';
-
-// Subcomponents
-import DashboardOverview from './components/DashboardOverview';
-import UsersTab from './components/UsersTab';
-import ClientsTab from './components/ClientsTab';
-import ConflictsTab from './components/ConflictsTab';
-import AppointmentsTab from './components/AppointmentsTab';
-import DevelopersProjectsTab from './components/DevelopersProjectsTab';
-
-import ConfirmModal from './components/ConfirmModal';
-import MapModal from './components/MapModal';
-import Notification, { ToastMessage } from './components/Notification';
-
-export default function App() {
-  // Authentication states
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
-  const [loginEmail, setLoginEmail] = useState('nari.casama.developer@gmail.com'); // Autofills standard admin for ease of test/review
-  const [loginPassword, setLoginPassword] = useState('Admin@Aspire88');
-  const [showPassword, setShowPassword] = useState(false);
-  const [authError, setAuthError] = useState('');
-
-  // Local database states synchronized with db engine
-  const [profiles, setProfiles] = useState<UserProfile[]>([]);
+function DashboardShell() {
+  const { toast } = useToast();
+  const [refreshKey, setRefreshKey] = useState(0);
+  
+  // Auth Session Variables
+  const [currentUser, setCurrentUser] = useState<Profile | null>(null);
+  
+  // Database Tables Lists
+  const [profiles, setProfiles] = useState<Profile[]>([]);
   const [developers, setDevelopers] = useState<Developer[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [conflicts, setConflicts] = useState<DuplicateConflict[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
 
-  // Navigation state
-  const [activeTab, setActiveTab] = useState<string>('dashboard');
+  // Developer UI Variables
+  const [showConfigTerminal, setShowConfigTerminal] = useState(false);
+
+  // Tab View state
+  const [activeTab, setActiveTab] = useState('Overview');
+
+  // Defensive Alert dialogue
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogConfig, setDialogConfig] = useState<{
+    title: string;
+    description: string;
+    onConfirm: () => void;
+  }>({
+    title: '',
+    description: '',
+    onConfirm: () => {}
+  });
+
+  // Mobile navigation overlay
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Global modals and toast arrays
-  const [toasts, setToasts] = useState<ToastMessage[]>([]);
-  
-  const [confirmConfig, setConfirmConfig] = useState<{
-    isOpen: boolean;
-    title: string;
-    message: string;
-    type: 'danger' | 'warning' | 'info' | 'success';
-    confirmText?: string;
-    cancelText?: string;
-    onConfirm: () => void;
-    onCancel: () => void;
-  } | null>(null);
+  // Theme Switching State
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    return (localStorage.getItem('aspire88_theme') as 'dark' | 'light') || 'dark';
+  });
 
-  const [mapConfig, setMapConfig] = useState<{
-    isOpen: boolean;
-    project: Project | null;
-  }>({ isOpen: false, project: null });
-
-  // Forced password change form states (for temporary password state)
-  const [forcedNewPass, setForcedNewPass] = useState('');
-  const [forcedConfirmPass, setForcedConfirmPass] = useState('');
-  const [forcedError, setForcedError] = useState('');
-
-  // Self Settings screen states
-  const [selfFirstName, setSelfFirstName] = useState('');
-  const [selfLastName, setSelfLastName] = useState('');
-  const [selfMiddleName, setSelfMiddleName] = useState('');
-  const [selfAddress, setSelfAddress] = useState('');
-  const [selfBirthday, setSelfBirthday] = useState('');
-  const [selfContactNumber, setSelfContactNumber] = useState('');
-  const [selfEmail, setSelfEmail] = useState('');
-  const [selfOldPassword, setSelfOldPassword] = useState('');
-  const [selfNewPassword, setSelfNewPassword] = useState('');
-  const [selfConfirmPassword, setSelfConfirmPassword] = useState('');
-
-  // Initialize and synchronize state
-  useEffect(() => {
-    refreshLocalStates();
-  }, []);
-
-  const refreshLocalStates = () => {
-    setProfiles([...db.getProfiles()]);
-    setDevelopers([...db.getDevelopers()]);
-    setProjects([...db.getProjects()]);
-    setClients([...db.getClients()]);
-    setConflicts([...db.getConflicts()]);
-    setAppointments([...db.getAppointments()]);
+  const toggleTheme = () => {
+    const nextTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(nextTheme);
+    localStorage.setItem('aspire88_theme', nextTheme);
   };
 
-  // Toast Helpers
-  const addToast = (text: string, type: 'success' | 'error' | 'info' = 'success') => {
-    const id = Math.random().toString();
-    setToasts(prev => [...prev, { id, text, type }]);
-  };
-
-  const removeToast = (id: string) => {
-    setToasts(prev => prev.filter(t => t.id !== id));
-  };
-
-  // Login handler
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    setAuthError('');
-
-    const found = db.getProfiles().find(p => p.email.toLowerCase() === loginEmail.trim().toLowerCase());
-    if (!found) {
-      setAuthError("No personnel account found matching this email.");
-      return;
-    }
-
-    if (!found.isActive) {
-      setAuthError("Account suspended. Please reach out to administrative management.");
-      return;
-    }
-
-    // Verify Password Hash
-    if (found.passwordHash !== encryptPassword(loginPassword)) {
-      setAuthError("Invalid credentials. Please verify your email and password.");
-      return;
-    }
-
-    // Authenticated!
-    setCurrentUser(found);
-    addToast(`Successfully logged in as ${found.firstName}!`, 'success');
+  // Check and send email reminders for upcoming appointments
+  const checkUpcomingAppointments = async (currentAppts: Appointment[], currentProfiles: Profile[]) => {
+    const now = Date.now();
+    const oneHourMs = 60 * 60 * 1000;
     
-    // Seed Settings fields
-    setSelfFirstName(found.firstName);
-    setSelfLastName(found.lastName);
-    setSelfMiddleName(found.middleName || '');
-    setSelfAddress(found.address);
-    setSelfBirthday(found.birthday);
-    setSelfContactNumber(found.contactNumber);
-    setSelfEmail(found.email);
+    // Find open appointments that are scheduled between now and 1 hour from now, and have not been notified yet.
+    const upcoming = currentAppts.filter(appt => {
+      if (appt.status !== 'Open' || appt.notified1Hr) return false;
+      const apptTime = new Date(appt.appointment_time).getTime();
+      const diff = apptTime - now;
+      // 1 hour reminder triggers when the appointment is within 1 hour in the future
+      return diff > 0 && diff <= oneHourMs;
+    });
 
-    // Default tab depending on role
-    if (found.role === 'Treasurer') {
-      setActiveTab('roster');
-    } else {
-      setActiveTab('dashboard');
+    if (upcoming.length === 0) return;
+
+    for (const appt of upcoming) {
+      const agent = currentProfiles.find(p => p.id === appt.agent_id);
+      if (agent && agent.email) {
+        const apptDate = new Date(appt.appointment_time);
+        
+        // 12-hour format scheduled time as requested
+        const timeStr = apptDate.toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true
+        });
+        const dateStr = apptDate.toLocaleDateString('en-US', {
+          month: 'long',
+          day: 'numeric',
+          year: 'numeric'
+        });
+
+        const clientObj = clients.find(c => c.id === appt.client_id);
+        const clientName = clientObj ? `${clientObj.first_name} ${clientObj.last_name}` : 'Unknown Client';
+
+        const subject = `[Reminder] Upcoming Appointment - ${appt.appointment_type} in Less Than 1 Hour`;
+        const html = `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 32px 24px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff; color: #334155; line-height: 1.6; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+            <!-- Brand Header -->
+            <div style="border-bottom: 2px solid #6366f1; padding-bottom: 16px; margin-bottom: 24px; text-align: left;">
+              <h2 style="margin: 0; color: #0f172a; font-size: 22px; font-weight: 800; letter-spacing: -0.025em;">ASPIRE88 ESTATES CORPORATION INTEGRATED ENTERPRISE SYSTEM</h2>
+              <span style="font-size: 11px; color: #4f46e5; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;">Integrated Enterprise System</span>
+            </div>
+
+            <!-- Main Content -->
+            <p style="margin-top: 0; margin-bottom: 16px; font-size: 14px; color: #0f172a; font-weight: 600;">
+              Dear ${agent.first_name} ${agent.last_name},
+            </p>
+            <p style="margin-top: 0; margin-bottom: 20px; font-size: 14px; color: #475569;">
+              This is an automated operational alert reminding you that you have an upcoming client engagement scheduled to begin in less than <strong>one (1) hour</strong>.
+            </p>
+
+            <!-- Details Block -->
+            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+              <h4 style="margin-top: 0; margin-bottom: 14px; font-size: 12px; font-weight: 700; color: #475569; letter-spacing: 0.05em; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">
+                Engagement Details
+              </h4>
+              <table style="width: 100%; border-collapse: collapse; font-size: 13.5px;">
+                <tr>
+                  <td style="padding: 6px 0; color: #64748b; font-weight: 500; width: 35%; vertical-align: top;">Appointment ID:</td>
+                  <td style="padding: 6px 0; color: #0f172a; font-family: monospace; font-weight: 600;">${appt.id}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 6px 0; color: #64748b; font-weight: 500; vertical-align: top;">Client:</td>
+                  <td style="padding: 6px 0; color: #0f172a; font-weight: 600;">${clientName}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 6px 0; color: #64748b; font-weight: 500; vertical-align: top;">Engagement Type:</td>
+                  <td style="padding: 6px 0; color: #4f46e5; font-weight: 700;">${appt.appointment_type}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 6px 0; color: #64748b; font-weight: 500; vertical-align: top;">Scheduled Time:</td>
+                  <td style="padding: 6px 0; color: #0f172a; font-weight: 600;">${dateStr} at ${timeStr}</td>
+                </tr>
+                ${appt.address ? `
+                <tr>
+                  <td style="padding: 6px 0; color: #64748b; font-weight: 500; vertical-align: top;">Location:</td>
+                  <td style="padding: 6px 0; color: #0f172a; font-weight: 500;">${appt.address}</td>
+                </tr>` : ''}
+                ${appt.notes ? `
+                <tr>
+                  <td style="padding: 6px 0; color: #64748b; font-weight: 500; vertical-align: top;">Preparatory Notes:</td>
+                  <td style="padding: 6px 0; color: #475569; font-weight: 500; font-style: italic;">${appt.notes}</td>
+                </tr>` : ''}
+              </table>
+            </div>
+
+            <!-- Call to Action -->
+            <p style="font-size: 14px; color: #475569; margin-bottom: 24px;">
+              Please review your client's files, prepare any necessary marketing literature, and ensure you arrive on schedule to maintain professional standards.
+            </p>
+
+            <div style="text-align: center; margin-bottom: 28px;">
+              <a href="https://aspire88.netlify.app" style="background-color: #4f46e5; color: #ffffff; padding: 12px 24px; font-size: 14px; font-weight: 600; text-decoration: none; border-radius: 8px; display: inline-block;">
+                Access ERP Portal
+              </a>
+            </div>
+
+            <!-- Footer -->
+            <div style="border-top: 1px solid #e2e8f0; padding-top: 16px; text-align: center; font-size: 12px; color: #94a3b8;">
+              <p style="margin: 0 0 4px 0;">This is an automated operational alert from the Aspire88 Estates Corporation Integrated Enterprise System schedule tracker.</p>
+              <p style="margin: 0;">&copy; 2026 Aspire88 Estates Corporation Integrated Enterprise System. All rights reserved.</p>
+            </div>
+          </div>
+        `;
+
+        console.log(`[Reminder Check] Sending reminder to ${agent.email} for appointment ${appt.id}`);
+        
+        // Mark as notified first to prevent double-sending
+        appt.notified1Hr = true;
+        await db.saveAppointment(appt);
+        
+        sendEmail(agent.email, subject, html).catch(err => {
+          console.error(`Failed to send reminder email for ${appt.id}:`, err);
+        });
+      } else {
+        // If agent doesn't have email or is not found, we still mark it notified to avoid repeatedly checking
+        appt.notified1Hr = true;
+        await db.saveAppointment(appt);
+      }
     }
   };
 
-  // Logout handler
+  // Load and refresh dataset
+  const reloadData = async () => {
+    const p = await db.getProfiles();
+    const d = await db.getDevelopers();
+    const pr = await db.getProjects();
+    const c = await db.getClients();
+    const cf = await db.getConflicts();
+    const ap = await db.getAppointments();
+
+    setProfiles(p);
+    setDevelopers(d);
+    setProjects(pr);
+    setClients(c);
+    setConflicts(cf);
+    setAppointments(ap);
+
+    // Run the appointment reminder check
+    await checkUpcomingAppointments(ap, p);
+
+    // Lockout trigger check: Check if current active user was deactivated in background
+    if (currentUser) {
+      const activeCurrent = p.find(prof => prof.id === currentUser.id);
+      if (activeCurrent) {
+        if (!activeCurrent.is_active) {
+          toast('Authentication Failure: This account has been deactivated by administration.', 'error');
+          setCurrentUser(null);
+        } else {
+          // Sync current profile changes immediately if any field differs to avoid infinite loop
+          if (
+            activeCurrent.first_name !== currentUser.first_name ||
+            activeCurrent.last_name !== currentUser.last_name ||
+            activeCurrent.middle_name !== currentUser.middle_name ||
+            activeCurrent.email !== currentUser.email ||
+            activeCurrent.contact_number !== currentUser.contact_number ||
+            activeCurrent.address !== currentUser.address ||
+            activeCurrent.prc_license !== currentUser.prc_license ||
+            activeCurrent.birthdate !== currentUser.birthdate ||
+            activeCurrent.password !== currentUser.password ||
+            activeCurrent.temp_password !== currentUser.temp_password ||
+            activeCurrent.is_temporary !== currentUser.is_temporary ||
+            activeCurrent.role !== currentUser.role
+          ) {
+            setCurrentUser(activeCurrent);
+          }
+        }
+      }
+    }
+  };
+
+  useEffect(() => {
+    reloadData();
+    const interval = setInterval(() => {
+      reloadData();
+    }, 20000); // refresh every 20 seconds
+    return () => clearInterval(interval);
+  }, [currentUser]);
+
+  const handleLoginSuccess = (profile: Profile) => {
+    setCurrentUser(profile);
+    reloadData();
+    toast(`Authenticated as ${profile.first_name} ${profile.last_name} (${profile.role}).`, 'success');
+  };
+
+  const handlePasswordChanged = (updatedProfile: Profile) => {
+    setCurrentUser(updatedProfile);
+    reloadData();
+  };
+
   const handleLogout = () => {
-    setConfirmConfig({
-      isOpen: true,
-      title: "Confirm Log Out",
-      message: "Are you sure you want to terminate your active dashboard session?",
-      type: "warning",
-      confirmText: "Log Out",
+    setDialogConfig({
+      title: 'Deauthorize Secure ERP Session?',
+      description: 'You will be logged out of your active workstation segment. All non-committed database queues remain fully safeguarded.',
       onConfirm: () => {
+        setDialogOpen(false);
+        setMobileMenuOpen(false);
         setCurrentUser(null);
-        setLoginPassword('');
-        setConfirmConfig(null);
-        addToast("Logged out successfully.", 'info');
-      },
-      onCancel: () => setConfirmConfig(null)
+        setActiveTab('Overview');
+        toast('Identity segment successfully decommissioned.', 'info');
+      }
     });
+    setDialogOpen(true);
   };
 
-  // Forced password change submit
-  const handleForcedPasswordSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setForcedError('');
-
-    if (forcedNewPass.length < 6) {
-      setForcedError("Password must consist of at least 6 characters.");
-      return;
+  // Visibility filters on tab views:
+  // - Admin: see all
+  // - Broker: see Overview, Sub-agents, Clients, Conflicts, Projects, Appointments
+  // - Agent: see Overview, Clients, Conflicts, Projects, Appointments
+  // - Treasurer: see Overview, Personnel Directory (Profiles)
+  const getAllowedTabs = () => {
+    if (!currentUser) return [];
+    const r = currentUser.role;
+    if (r === 'Admin') {
+      return ['Overview', 'Staff Segment', 'Clients Segment', 'Resolution Panel', 'Estates Catalog', 'Appointments Segment', 'Audit Logs', 'My Profile', 'Security & Notifications'];
     }
-
-    if (forcedNewPass !== forcedConfirmPass) {
-      setForcedError("Passwords do not match.");
-      return;
+    if (r === 'Broker') {
+      return ['Overview', 'My Downline Agents', 'Clients Segment', 'Resolution Panel', 'Estates Catalog', 'Appointments Segment', 'My Profile', 'Security & Notifications'];
     }
-
-    if (!currentUser) return;
-
-    // Save and clear temporary password state
-    const updated = db.updateProfile(currentUser.id, {
-      isTemporaryPassword: false,
-      passwordHash: encryptPassword(forcedNewPass)
-    });
-
-    setCurrentUser(updated);
-    refreshLocalStates();
-    addToast("Security credentials verified! Access granted.", 'success');
-    setForcedNewPass('');
-    setForcedConfirmPass('');
+    if (r === 'Agent') {
+      return ['Overview', 'Clients Segment', 'Resolution Panel', 'Estates Catalog', 'Appointments Segment', 'My Profile', 'Security & Notifications'];
+    }
+    if (r === 'Treasurer') {
+      return ['Overview', 'Personnel Directory', 'Estates Catalog', 'My Profile', 'Security & Notifications'];
+    }
+    return ['Overview', 'My Profile', 'Security & Notifications'];
   };
 
-  // Change self password submit (Security Settings)
-  const handleSelfPasswordChange = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!currentUser) return;
-
-    if (currentUser.passwordHash !== encryptPassword(selfOldPassword)) {
-      addToast("Current password verification failed.", 'error');
-      return;
-    }
-
-    if (selfNewPassword.length < 6) {
-      addToast("New password must be at least 6 characters long.", 'error');
-      return;
-    }
-
-    if (selfNewPassword !== selfConfirmPassword) {
-      addToast("New passwords do not match.", 'error');
-      return;
-    }
-
-    setConfirmConfig({
-      isOpen: true,
-      title: "Update Password",
-      message: "Change your security settings now? You will need your new password for your next login.",
-      type: "warning",
-      onConfirm: () => {
-        db.updateProfile(currentUser.id, {
-          passwordHash: encryptPassword(selfNewPassword)
-        });
-        refreshLocalStates();
-        setSelfOldPassword('');
-        setSelfNewPassword('');
-        setSelfConfirmPassword('');
-        setConfirmConfig(null);
-        addToast("Password updated successfully.", 'success');
-      },
-      onCancel: () => setConfirmConfig(null)
-    });
+  const tabIcons: Record<string, any> = {
+    'Overview': Grid,
+    'Staff Segment': Shield,
+    'My Downline Agents': Users,
+    'Personnel Directory': Users,
+    'Clients Segment': UserCheck,
+    'Resolution Panel': Scale,
+    'Estates Catalog': Building,
+    'Appointments Segment': Calendar,
+    'Audit Logs': ShieldCheck,
+    'My Profile': User,
+    'Security & Notifications': ShieldAlert,
   };
 
-  // Edit own profile details
-  const handleSelfProfileUpdate = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!currentUser) return;
+  const allowedTabs = getAllowedTabs();
 
-    setConfirmConfig({
-      isOpen: true,
-      title: "Update Personal Details",
-      message: "Are you sure you want to save modifications to your user profile?",
-      type: "info",
-      onConfirm: () => {
-        const updated = db.updateProfile(currentUser.id, {
-          firstName: selfFirstName,
-          lastName: selfLastName,
-          middleName: selfMiddleName || undefined,
-          address: selfAddress,
-          birthday: selfBirthday,
-          contactNumber: selfContactNumber,
-          email: selfEmail
-        });
-        setCurrentUser(updated);
-        refreshLocalStates();
-        setConfirmConfig(null);
-        addToast("Personal details updated successfully.", 'success');
-      },
-      onCancel: () => setConfirmConfig(null)
-    });
+  // If loading...
+  if (currentUser === null) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-4">
+        {/* Absolute Background Mesh */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#020617_1px,transparent_1px),linear-gradient(to_bottom,#020617_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-30 pointer-events-none" />
+        
+        <LoginForm
+          onLoginSuccess={handleLoginSuccess}
+          profiles={profiles}
+        />
+
+
+      </div>
+    );
+  }
+
+  // FORCE CHANGE PASSWORD INTERCEPT
+  if (currentUser.is_temporary) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-4">
+        <ForcePasswordChange
+          currentProfile={currentUser}
+          onPasswordChanged={handlePasswordChanged}
+        />
+      </div>
+    );
+  }
+
+  // Monthly Closed Appointments Chart Data
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+
+  const closedApptsThisMonth = appointments.filter(appt => {
+    if (appt.status !== 'Done') return false;
+    const date = new Date(appt.appointment_time);
+    return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+  });
+
+  const getChartData = () => {
+    if (!currentUser) return [];
+    
+    if (currentUser.role === 'Admin') {
+      const countByAgent: { [agentId: string]: number } = {};
+      closedApptsThisMonth.forEach(appt => {
+        countByAgent[appt.agent_id] = (countByAgent[appt.agent_id] || 0) + 1;
+      });
+      return profiles
+        .filter(p => p.role === 'Agent' || p.role === 'Broker')
+        .map(profile => ({
+          name: `${profile.first_name} ${profile.last_name} (${profile.id})`,
+          closedCount: countByAgent[profile.id] || 0,
+        }));
+    }
+    
+    if (currentUser.role === 'Broker') {
+      const countByAgent: { [agentId: string]: number } = {};
+      closedApptsThisMonth.forEach(appt => {
+        countByAgent[appt.agent_id] = (countByAgent[appt.agent_id] || 0) + 1;
+      });
+      // Show broker themselves and their sub-agents
+      return profiles
+        .filter(p => p.id === currentUser.id || p.parent_broker_id === currentUser.id)
+        .map(profile => ({
+          name: `${profile.first_name} ${profile.last_name} (${profile.id})`,
+          closedCount: countByAgent[profile.id] || 0,
+        }));
+    }
+    
+    if (currentUser.role === 'Agent') {
+      // Filter closed appointments to own agent only
+      const myClosedAppts = closedApptsThisMonth.filter(appt => appt.agent_id === currentUser.id);
+      const types: string[] = ['Meeting', 'Site Visit', 'Reservation Sign-off', 'Contract Signing'];
+      return types.map(t => ({
+        name: t,
+        closedCount: myClosedAppts.filter(appt => appt.appointment_type === t).length
+      }));
+    }
+    
+    return [];
   };
 
-  // Global action wrapper: confirm wrapper
-  const triggerConfirmation = (
-    title: string, 
-    msg: string, 
-    type: 'danger' | 'warning' | 'info' | 'success', 
-    onConfirmCallback: () => void
-  ) => {
-    setConfirmConfig({
-      isOpen: true,
-      title,
-      message: msg,
-      type,
-      onConfirm: () => {
-        onConfirmCallback();
-        refreshLocalStates();
-        setConfirmConfig(null);
-      },
-      onCancel: () => setConfirmConfig(null)
-    });
-  };
+  const chartData = getChartData();
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-amber-500 selection:text-slate-950" id="aspire88-saas-root">
-      
-      {/* 1. SIGN IN PORTAL */}
-      {!currentUser && (
-        <div className="flex-1 flex items-center justify-center p-4 min-h-screen relative overflow-hidden" id="auth-portal">
-          {/* Visual Ambient Circles */}
-          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+    <div className={`min-h-screen bg-slate-950 text-slate-100 flex flex-col ${theme === 'light' ? 'theme-light' : 'theme-dark'}`}>
+      {/* Visual Mesh Overlay */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#0f172a_0.5px,transparent_0.5px),linear-gradient(to_bottom,#0f172a_0.5px,transparent_0.5px)] bg-[size:5rem_5rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-20 pointer-events-none" />
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="w-full max-w-md bg-slate-900 border border-slate-800 p-8 rounded-3xl shadow-2xl relative z-10"
-            id="login-card"
-          >
-            {/* Branding */}
-            <div className="text-center" id="branding-header">
-              <div className="inline-flex p-3.5 bg-amber-500/10 border border-amber-500/20 rounded-2xl mb-4" id="branding-icon-container">
-                <Building2 className="w-8 h-8 text-amber-500" />
-              </div>
-              <h2 className="text-xl font-bold tracking-tight text-slate-100" id="branding-name">
-                Aspire88 Estates Corporation
-              </h2>
-              <p className="text-[10px] text-amber-500 mt-1.5 uppercase font-mono tracking-widest">
-                Integrated Enterprise System
-              </p>
-            </div>
-
-            {authError && (
-              <div className="mt-6 p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 flex gap-2.5 items-start text-xs text-rose-400 font-medium" id="auth-error-block">
-                <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" />
-                <p>{authError}</p>
-              </div>
-            )}
-
-            {/* Login Form */}
-            <form onSubmit={handleLogin} className="mt-6 space-y-4" id="login-form">
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase font-mono tracking-wide">
-                  Corporate Email
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={loginEmail}
-                  onChange={(e) => setLoginEmail(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50"
-                  placeholder="name@aspire88.com"
-                  id="email-input"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase font-mono tracking-wide flex items-center justify-between">
-                  <span>Passphrase</span>
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="text-[10px] text-amber-500 hover:text-amber-400 font-bold capitalize cursor-pointer outline-none"
-                  >
-                    {showPassword ? 'Hide' : 'Show'}
-                  </button>
-                </label>
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  value={loginPassword}
-                  onChange={(e) => setLoginPassword(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50 font-mono tracking-widest"
-                  placeholder="••••••••"
-                  id="password-input"
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="w-full mt-2 py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-sm transition shadow-xl shadow-amber-500/10 cursor-pointer"
-                id="login-btn"
-              >
-                Sign In to Vault
-              </button>
-            </form>
-
-            {/* Credentials note */}
-            <div className="mt-6 pt-5 border-t border-slate-800/60 text-center" id="credentials-note">
-              <p className="text-[11px] text-slate-500 font-mono leading-relaxed">
-                Superuser Seed credentials preloaded.<br />
-                Email: <strong className="text-slate-400">nari.casama.developer@gmail.com</strong><br />
-                Pass: <strong className="text-amber-500/90">Admin@Aspire88</strong>
-              </p>
-            </div>
-          </motion.div>
+      {/* Enterprise Upper Navigation bar */}
+      <header className="sticky top-0 z-40 bg-slate-900/80 backdrop-blur-md border-b border-slate-800/80 px-4 md:px-8 py-3.5 flex items-center justify-between shadow-lg relative">
+        <div className="flex items-center gap-3">
+          {/* Logo Frame */}
+          <div className="p-2 bg-emerald-950 border border-emerald-800/40 text-emerald-400 rounded-xl">
+            <Building className="w-5 h-5" />
+          </div>
+          <div>
+            <h1 className="text-sm font-bold tracking-tight text-slate-100 flex items-center gap-1.5 leading-none">
+              Aspire88 Estates Corporation Integrated Enterprise System
+              <span className="text-[9px] font-sans px-1.5 py-0.5 rounded bg-emerald-950/80 text-emerald-400 border border-emerald-800/60 font-semibold uppercase scale-90">
+                Integrated Enterprise
+              </span>
+              {AppProperties.useTestDatabase && (
+                <span className="text-[8px] font-sans px-1.5 py-0.5 rounded bg-amber-950/80 text-amber-400 border border-amber-800/60 font-bold uppercase tracking-wide">
+                  Test DB
+                </span>
+              )}
+              {AppProperties.mode === 'sandbox' && (
+                <span className="text-[8px] font-sans px-1.5 py-0.5 rounded bg-indigo-950/80 text-indigo-400 border border-indigo-800/60 font-bold uppercase tracking-wide">
+                  Sandbox
+                </span>
+              )}
+            </h1>
+            <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider block mt-1">
+              {currentUser.role} Control Portal
+            </span>
+          </div>
         </div>
-      )}
 
-      {/* 2. FORCED CHANGE PASSWORD FIRST STATE */}
-      {currentUser && currentUser.isTemporaryPassword && (
-        <div className="flex-1 flex items-center justify-center p-4 min-h-screen relative overflow-hidden bg-slate-950 z-50" id="force-password-portal">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="w-full max-w-md bg-slate-900 border border-slate-800 p-8 rounded-3xl shadow-2xl relative"
-            id="force-password-card"
-          >
-            <div className="text-center">
-              <div className="inline-flex p-3 bg-amber-500/10 rounded-2xl mb-4 text-amber-500" id="lock-icon-container">
-                <Lock className="w-7 h-7" />
+        {/* Global Desktop Header Operations */}
+        <div className="hidden lg:flex items-center gap-6">
+          {/* Digital Clock synced PST */}
+          <PstClock />
+
+          {/* Current user info */}
+          <div className="border-l border-slate-800/80 pl-6 flex items-center gap-3">
+            <div className="text-right">
+              <div className="text-xs font-bold text-slate-200">
+                {currentUser.first_name} {currentUser.last_name}
               </div>
-              <h3 className="text-xl font-bold tracking-tight text-slate-100">
-                Action Required: Secure Passphrase
-              </h3>
-              <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
-                Your account is currently in a temporary password state. The security framework of Aspire88 requires password configuration before granting access to client registries and dashboards.
-              </p>
+              <div className="text-[10px] font-mono text-slate-500 mt-0.5">{currentUser.id}</div>
             </div>
-
-            {forcedError && (
-              <p className="mt-4 text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 p-3 rounded-lg text-center font-medium">
-                {forcedError}
-              </p>
-            )}
-
-            <form onSubmit={handleForcedPasswordSubmit} className="mt-6 space-y-4" id="forced-password-form">
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase font-mono tracking-wide">
-                  New Secure Password *
-                </label>
-                <input
-                  type="password"
-                  required
-                  value={forcedNewPass}
-                  onChange={(e) => setForcedNewPass(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-amber-500/50"
-                  placeholder="Min 6 characters..."
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase font-mono tracking-wide">
-                  Confirm Password *
-                </label>
-                <input
-                  type="password"
-                  required
-                  value={forcedConfirmPass}
-                  onChange={(e) => setForcedConfirmPass(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-amber-500/50"
-                  placeholder="Retype password..."
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-sm transition shadow-lg shadow-amber-500/10 mt-2"
-                id="submit-forced-password-btn"
-              >
-                Establish Secure Vault Access
-              </button>
-            </form>
-          </motion.div>
-        </div>
-      )}
-
-      {/* 3. MAIN DASHBOARD ACCESS WRAPPER */}
-      {currentUser && !currentUser.isTemporaryPassword && (
-        <div className="flex-1 flex flex-col lg:flex-row h-screen overflow-hidden" id="main-panel-wrapper">
-          
-          {/* Sidebar / Drawer Navigation */}
-          <aside className="w-full lg:w-72 bg-slate-900 border-b lg:border-b-0 lg:border-r border-slate-800/80 flex flex-col justify-between shrink-0 z-30" id="saas-sidebar">
             
-            {/* Header branding */}
-            <div>
-              <div className="flex items-center justify-between px-6 py-5 border-b border-slate-800/60" id="sidebar-header">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-amber-500/10 border border-amber-500/20 rounded-xl">
-                    <Building2 className="w-5 h-5 text-amber-500" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-slate-100 text-[13px] tracking-tight leading-none">
-                      Aspire88 Estates Corp
-                    </h3>
-                    <span className="text-[9px] text-amber-500/90 font-mono tracking-wider mt-1.5 block uppercase">
-                      Enterprise System
-                    </span>
-                  </div>
-                </div>
+            {/* Theme switcher */}
+            <button
+              onClick={toggleTheme}
+              className="p-2.5 bg-slate-950 border border-slate-805 hover:bg-slate-900 text-indigo-400 hover:text-indigo-300 rounded-xl transition-all cursor-pointer shadow-inner"
+              title="Toggle high-contrast light mode"
+            >
+              {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
 
-                {/* Mobile menu toggle */}
+            <button
+              onClick={handleLogout}
+              className="p-2.5 bg-slate-950 border border-slate-805 hover:bg-slate-900 text-rose-400 hover:text-rose-300 rounded-xl transition-all cursor-pointer shadow-inner"
+              title="Deauthorize session segment"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile menu toggle */}
+        <div className="flex items-center gap-4 lg:hidden">
+          <PstClock />
+          {/* Mobile Theme switcher */}
+          <button
+            onClick={toggleTheme}
+            className="p-2 bg-slate-950 border border-slate-805 text-indigo-400 hover:text-indigo-300 rounded-xl transition-all cursor-pointer"
+            title="Toggle high-contrast light mode"
+          >
+            {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </button>
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="p-2 bg-slate-950 border border-slate-805 text-slate-300 hover:text-slate-100 rounded-xl transition-all cursor-pointer"
+          >
+            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
+        </div>
+      </header>
+
+      {/* Mobile Menu Slideout */}
+      {mobileMenuOpen && (
+        <div className="lg:hidden fixed inset-x-0 top-[69px] z-30 bg-slate-900 border-b border-slate-800 p-5 shadow-2xl flex flex-col gap-4 animate-fade-in">
+          <div className="text-xs text-slate-400 border-b border-slate-805 pb-2">
+            Logged in as: <span className="text-slate-100 font-bold">{currentUser.first_name} {currentUser.last_name} ({currentUser.id})</span>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            {allowedTabs.map(tab => {
+              const Icon = tabIcons[tab] || Grid;
+              return (
                 <button
-                  type="button"
-                  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                  className="p-1.5 text-slate-400 hover:text-slate-100 hover:bg-slate-800 rounded-lg lg:hidden transition"
-                  id="mobile-hamburger"
-                >
-                  {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-                </button>
-              </div>
-
-              {/* Navigation Items */}
-              <nav className={`px-4 py-6 space-y-1.5 lg:block ${mobileMenuOpen ? 'block' : 'hidden'}`} id="sidebar-navigation">
-                {/* Standard tabs dependent on roles */}
-                
-                {currentUser.role !== 'Treasurer' && (
-                  <button
-                    onClick={() => { setActiveTab('dashboard'); setMobileMenuOpen(false); }}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold uppercase tracking-wider transition ${
-                      activeTab === 'dashboard' 
-                        ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/10' 
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-                    }`}
-                    id="nav-dashboard"
-                  >
-                    <LayoutDashboard className="w-4 h-4 shrink-0" />
-                    Dashboard
-                  </button>
-                )}
-
-                {currentUser.role !== 'Agent' && (
-                  <button
-                    onClick={() => { setActiveTab('roster'); setMobileMenuOpen(false); }}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold uppercase tracking-wider transition ${
-                      activeTab === 'roster' 
-                        ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/10' 
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-                    }`}
-                    id="nav-roster"
-                  >
-                    <Users className="w-4 h-4 shrink-0" />
-                    Roster Personnel
-                  </button>
-                )}
-
-                {currentUser.role === 'Admin' && (
-                  <button
-                    onClick={() => { setActiveTab('developers'); setMobileMenuOpen(false); }}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold uppercase tracking-wider transition ${
-                      activeTab === 'developers' 
-                        ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/10' 
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-                    }`}
-                    id="nav-developers"
-                  >
-                    <Building className="w-4 h-4 shrink-0" />
-                    Developers & Projects
-                  </button>
-                )}
-
-                {currentUser.role !== 'Treasurer' && (
-                  <button
-                    onClick={() => { setActiveTab('clients'); setMobileMenuOpen(false); }}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold uppercase tracking-wider transition ${
-                      activeTab === 'clients' 
-                        ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/10' 
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-                    }`}
-                    id="nav-clients"
-                  >
-                    <UserCheck className="w-4 h-4 shrink-0" />
-                    Clients Custody
-                  </button>
-                )}
-
-                {(currentUser.role === 'Admin' || currentUser.role === 'Broker') && (
-                  <button
-                    onClick={() => { setActiveTab('conflicts'); setMobileMenuOpen(false); }}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold uppercase tracking-wider transition relative ${
-                      activeTab === 'conflicts' 
-                        ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/10' 
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-                    }`}
-                    id="nav-conflicts"
-                  >
-                    <ShieldAlert className="w-4 h-4 shrink-0" />
-                    <span>Dispute Hub</span>
-                    {clients.filter(c => c.conflictStatus === 'Pending').length > 0 && (
-                      <span className="absolute right-4 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping" />
-                    )}
-                  </button>
-                )}
-
-                {currentUser.role !== 'Treasurer' && (
-                  <button
-                    onClick={() => { setActiveTab('appointments'); setMobileMenuOpen(false); }}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold uppercase tracking-wider transition ${
-                      activeTab === 'appointments' 
-                        ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/10' 
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-                    }`}
-                    id="nav-appointments"
-                  >
-                    <Calendar className="w-4 h-4 shrink-0" />
-                    Appointments
-                  </button>
-                )}
-
-                <button
-                  onClick={() => { setActiveTab('settings'); setMobileMenuOpen(false); }}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold uppercase tracking-wider transition ${
-                    activeTab === 'settings' 
-                      ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/10' 
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                  key={tab}
+                  onClick={() => {
+                    setActiveTab(tab);
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm text-left transition-all cursor-pointer ${
+                    activeTab === tab
+                      ? 'bg-slate-950 border border-slate-800 text-indigo-400'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-950/40'
                   }`}
-                  id="nav-settings"
                 >
-                  <Settings className="w-4 h-4 shrink-0" />
-                  Self & Security Settings
+                  <Icon className="w-4 h-4 shrink-0" />
+                  {tab}
                 </button>
-              </nav>
+              );
+            })}
+          </div>
+
+          <div className="border-t border-slate-850 pt-4 flex flex-col gap-3">
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center justify-center gap-2 p-3 bg-rose-950/20 border border-rose-900/30 text-rose-400 hover:bg-rose-950/50 font-bold rounded-xl text-xs uppercase"
+            >
+              <LogOut className="w-4 h-4" />
+              Deauthorize workstation
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Main Structural segmentation (Sidebar + Content Workspace canvas) */}
+      <div className="flex-1 flex overflow-hidden">
+        
+        {/* Desktop Sidebar Rail */}
+        <aside className="hidden lg:flex flex-col w-64 bg-slate-900/45 border-r border-slate-800/80 p-5 shrink-0 justify-between">
+          <div className="space-y-6">
+            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-3 select-none">
+              Navigation Workspace
             </div>
 
-            {/* User Session Footer inside sidebar */}
-            <div className="p-4 border-t border-slate-800/60 bg-slate-950/20 lg:block hidden" id="sidebar-footer">
-              <div className="flex items-center gap-3" id="user-pill">
-                <div className="p-2 bg-slate-800 rounded-xl text-slate-400 shrink-0">
-                  <User className="w-4 h-4 text-amber-500" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-semibold text-slate-200 truncate">
-                    {currentUser.firstName} {currentUser.lastName}
-                  </p>
-                  <p className="text-[10px] text-slate-500 font-mono truncate uppercase mt-0.5">
-                    {currentUser.role} Account
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="p-1.5 text-slate-500 hover:text-slate-200 rounded-lg hover:bg-slate-800 transition"
-                  title="Secure Terminate Session"
-                  id="logout-btn-sidebar"
-                >
-                  <LogOut className="w-4 h-4" />
-                </button>
-              </div>
+            <nav className="space-y-1.5">
+              {allowedTabs.map(tab => {
+                const Icon = tabIcons[tab] || Grid;
+                const isSelected = activeTab === tab;
+
+                return (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={`w-full flex items-center gap-3.5 px-3.5 py-3 rounded-xl text-left text-xs font-bold transition-all cursor-pointer relative group ${
+                      isSelected
+                        ? 'bg-slate-900 border border-slate-800 text-indigo-400'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/30'
+                    }`}
+                  >
+                    {isSelected && (
+                      <motion.div
+                        layoutId="active-nav bg"
+                        className="absolute left-0 w-[3px] h-5 bg-gradient-to-b from-indigo-500 to-indigo-600 rounded-r-md"
+                      />
+                    )}
+                    <Icon className={`w-4 h-4 shrink-0 transition-colors ${isSelected ? 'text-indigo-400' : 'text-slate-500 group-hover:text-slate-350'}`} />
+                    <span>{tab}</span>
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+
+          {/* Sidebar Footer Details */}
+          <div className="border-t border-slate-805 pt-5 space-y-3">
+            <div className="text-[10px] text-slate-500 font-medium px-1 select-none">
+              v1.88.2 • Secure SSL active
             </div>
+          </div>
+        </aside>
 
-          </aside>
+        {/* Content Workspace Canvas */}
+        <main className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8 relative">
 
-          {/* Core App View Stage */}
-          <main className="flex-1 flex flex-col h-full overflow-hidden" id="saas-view-stage">
-            <div className="flex-1 overflow-y-auto px-6 py-8" id="view-scroller">
-              <div className="max-w-6xl mx-auto space-y-8" id="scroller-layout">
-                
-                {activeTab === 'dashboard' && currentUser.role !== 'Treasurer' && (
-                  <DashboardOverview
-                    currentUser={currentUser}
-                    profiles={profiles}
-                    clients={clients}
-                    appointments={appointments}
-                    projects={projects}
-                    developers={developers}
-                  />
-                )}
-
-                {activeTab === 'roster' && currentUser.role !== 'Agent' && (
-                  <UsersTab
-                    currentUser={currentUser}
-                    profiles={profiles}
-                    onAddUser={(data) => {
-                      db.addProfile(data);
-                      refreshLocalStates();
-                    }}
-                    onUpdateUser={(id, data) => {
-                      db.updateProfile(id, data);
-                      refreshLocalStates();
-                    }}
-                    onRequestConfirm={triggerConfirmation}
-                    onShowSuccessToast={(text) => addToast(text, 'success')}
-                  />
-                )}
-
-                {activeTab === 'developers' && currentUser.role === 'Admin' && (
-                  <DevelopersProjectsTab
-                    currentUser={currentUser}
-                    developers={developers}
-                    projects={projects}
-                    onAddDeveloper={(name) => {
-                      db.addDeveloper(name);
-                      refreshLocalStates();
-                    }}
-                    onUpdateDeveloper={(id, name, active) => {
-                      db.updateDeveloper(id, name, active);
-                      refreshLocalStates();
-                    }}
-                    onAddProject={(id, name, address) => {
-                      db.addProject(id, name, address);
-                      refreshLocalStates();
-                    }}
-                    onUpdateProject={(id, data) => {
-                      db.updateProject(id, data);
-                      refreshLocalStates();
-                    }}
-                    onViewMap={(proj) => setMapConfig({ isOpen: true, project: proj })}
-                    onRequestConfirm={triggerConfirmation}
-                    onShowSuccessToast={(text) => addToast(text, 'success')}
-                  />
-                )}
-
-                {activeTab === 'clients' && currentUser.role !== 'Treasurer' && (
-                  <ClientsTab
-                    currentUser={currentUser}
-                    clients={clients}
-                    profiles={profiles}
-                    conflicts={conflicts}
-                    onAddClient={(data) => {
-                      const { duplicateConflict } = db.addClient(data);
-                      refreshLocalStates();
-                      if (duplicateConflict) {
-                        addToast(`Lead duplicate flagged! ID ${duplicateConflict.id} put under pending dispute review.`, 'info');
-                      } else {
-                        addToast(`Client successfully encoded under your primary custody.`, 'success');
-                      }
-                    }}
-                    onUpdateClient={(id, data) => {
-                      db.updateClient(id, data);
-                      refreshLocalStates();
-                    }}
-                    onSurrenderClaim={(confId, agentId) => {
-                      db.surrenderClaim(confId, agentId);
-                      refreshLocalStates();
-                    }}
-                    onRequestConfirm={triggerConfirmation}
-                    onShowSuccessToast={(text) => addToast(text, 'success')}
-                  />
-                )}
-
-                {activeTab === 'conflicts' && (currentUser.role === 'Admin' || currentUser.role === 'Broker') && (
-                  <ConflictsTab
-                    currentUser={currentUser}
-                    conflicts={conflicts}
-                    clients={clients}
-                    profiles={profiles}
-                    onResolveConflict={(confId, action) => {
-                      db.resolveConflict(confId, action, currentUser.id);
-                      refreshLocalStates();
-                    }}
-                    onRequestConfirm={triggerConfirmation}
-                    onShowSuccessToast={(text) => addToast(text, 'success')}
-                  />
-                )}
-
-                {activeTab === 'appointments' && currentUser.role !== 'Treasurer' && (
-                  <AppointmentsTab
-                    currentUser={currentUser}
-                    appointments={appointments}
-                    clients={clients}
-                    projects={projects}
-                    profiles={profiles}
-                    onAddAppointment={(data) => {
-                      db.addAppointment(data);
-                      refreshLocalStates();
-                    }}
-                    onUpdateAppointment={(id, data) => {
-                      db.updateAppointment(id, data);
-                      refreshLocalStates();
-                    }}
-                    onRequestConfirm={triggerConfirmation}
-                    onShowSuccessToast={(text) => addToast(text, 'success')}
-                    onViewProjectMap={(proj) => setMapConfig({ isOpen: true, project: proj })}
-                  />
-                )}
-
-                {/* SELF SETTINGS TAB (My Profile, change password) */}
-                {activeTab === 'settings' && (
-                  <div className="space-y-6" id="settings-tab-root">
-                    <div>
-                      <h2 className="text-xl font-bold text-slate-100 tracking-tight" id="settings-title">
-                        Vault Profile & Security Credentials
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              className="space-y-8"
+              transition={{ duration: 0.15 }}
+            >
+              {activeTab === 'Overview' && (
+                <div className="space-y-8">
+                  {/* Greeting header card */}
+                  <div className="p-6 md:p-8 bg-gradient-to-r from-slate-900 via-slate-900 to-indigo-950/30 border border-slate-800 rounded-2xl relative overflow-hidden shadow-2xl">
+                    <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/5 rounded-full blur-3xl" />
+                    <div className="max-w-2xl">
+                      <div className="flex items-center gap-2 text-indigo-400 font-bold text-xs uppercase tracking-widest pl-0.5">
+                        <Sparkles className="w-4 h-4 animate-pulse" />
+                        Brokerage segment active
+                      </div>
+                      <h2 className="text-2xl font-black text-slate-100 tracking-tight leading-snug mt-2">
+                        Welcome, {currentUser.first_name} {currentUser.last_name}
                       </h2>
-                      <p className="text-xs text-slate-400 mt-1">
-                        Modify your standard personal profile data and configure system authentication passphrases.
+                      <p className="text-xs text-slate-400 leading-relaxed mt-2.5">
+                        Aspire88 Estates Corporation Integrated Enterprise System segment. Managing {currentUser.role === 'Admin' ? 'all administrative clusters and duplicate dispute records.' : currentUser.role === 'Broker' ? 'downline sales listings and client identity channels.' : currentUser.role === 'Agent' ? 'property scheduling coordinates.' : 'read-only directory lists.'} Access keys are restricted dynamically by Postgres Row Level Security.
                       </p>
                     </div>
+                  </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" id="settings-panels">
-                      {/* Left Side: Profile Information */}
-                      <div className="p-6 bg-slate-900 border border-slate-800 rounded-2xl space-y-4" id="settings-profile-pane">
-                        <h3 className="text-sm font-semibold text-slate-200 uppercase font-mono tracking-wider pb-3 border-b border-slate-800/80">
-                          Personal Profile details
+                  {/* Operational Stats indicators */}
+                  <DashboardStats
+                    currentProfile={currentUser}
+                    profiles={profiles}
+                    clients={clients}
+                    projects={projects}
+                    conflicts={conflicts}
+                    appointments={appointments}
+                  />
+
+                  {/* Today's Appointments List for Broker & Agent */}
+                  {(currentUser.role === 'Broker' || currentUser.role === 'Agent') && (
+                    <TodayAppointments
+                      currentProfile={currentUser}
+                      profiles={profiles}
+                      appointments={appointments}
+                      clients={clients}
+                      projects={projects}
+                      onViewAllClick={() => setActiveTab('Appointments Segment')}
+                      onRefresh={reloadData}
+                    />
+                  )}
+
+                  {/* Monthly Agent Performance Bar Chart (Closed Appointments) */}
+                  {currentUser.role !== 'Treasurer' && (
+                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-4">
+                      <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
+                        <BarChart3 className="w-4.5 h-4.5 text-indigo-400" />
+                        <h3 className="text-xs font-bold text-slate-100 uppercase tracking-wider">
+                          {currentUser.role === 'Agent'
+                            ? `Closed Appointments per Appointment Type (${now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })})`
+                            : `Closed Appointments per Agent (${now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })})`
+                          }
                         </h3>
-
-                        <form onSubmit={handleSelfProfileUpdate} className="space-y-4" id="settings-profile-form">
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <label className="block text-xs text-slate-400 mb-1">First Name</label>
-                              <input
-                                type="text"
-                                required
-                                value={selfFirstName}
-                                onChange={(e) => setSelfFirstName(e.target.value)}
-                                className="w-full bg-slate-950 border border-slate-800 px-3 py-2 rounded-lg text-xs text-slate-200 focus:outline-none"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-xs text-slate-400 mb-1">Last Name</label>
-                              <input
-                                type="text"
-                                required
-                                value={selfLastName}
-                                onChange={(e) => setSelfLastName(e.target.value)}
-                                className="w-full bg-slate-950 border border-slate-800 px-3 py-2 rounded-lg text-xs text-slate-200 focus:outline-none"
-                              />
-                            </div>
-                          </div>
-
-                          <div>
-                            <label className="block text-xs text-slate-400 mb-1">Middle Name</label>
-                            <input
-                              type="text"
-                              value={selfMiddleName}
-                              onChange={(e) => setSelfMiddleName(e.target.value)}
-                              className="w-full bg-slate-950 border border-slate-800 px-3 py-2 rounded-lg text-xs text-slate-200 focus:outline-none"
-                            />
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <label className="block text-xs text-slate-400 mb-1">Contact Number</label>
-                              <input
-                                type="text"
-                                required
-                                value={selfContactNumber}
-                                onChange={(e) => setSelfContactNumber(e.target.value)}
-                                className="w-full bg-slate-950 border border-slate-800 px-3 py-2 rounded-lg text-xs text-slate-200 focus:outline-none"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-xs text-slate-400 mb-1">Birthday</label>
-                              <input
-                                type="date"
-                                required
-                                value={selfBirthday}
-                                onChange={(e) => setSelfBirthday(e.target.value)}
-                                className="w-full bg-slate-950 border border-slate-800 px-3 py-2 rounded-lg text-xs text-slate-200 focus:outline-none"
-                              />
-                            </div>
-                          </div>
-
-                          <div>
-                            <label className="block text-xs text-slate-400 mb-1">Email Address</label>
-                            <input
-                              type="email"
-                              required
-                              value={selfEmail}
-                              onChange={(e) => setSelfEmail(e.target.value)}
-                              className="w-full bg-slate-950 border border-slate-800 px-3 py-2 rounded-lg text-xs text-slate-200 focus:outline-none"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-xs text-slate-400 mb-1">Address</label>
-                            <textarea
-                              required
-                              rows={2}
-                              value={selfAddress}
-                              onChange={(e) => setSelfAddress(e.target.value)}
-                              className="w-full bg-slate-950 border border-slate-800 px-3 py-2 rounded-lg text-xs text-slate-200 focus:outline-none resize-none"
-                            />
-                          </div>
-
-                          <button
-                            type="submit"
-                            className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-xs transition shadow cursor-pointer"
-                          >
-                            Save Personal Profile
-                          </button>
-                        </form>
                       </div>
+                      
+                      {chartData.length === 0 ? (
+                        <div className="py-12 text-center text-xs text-slate-500 italic">
+                          {currentUser.role === 'Agent'
+                            ? "No closed appointments recorded for your account this month."
+                            : "No active agents or brokers registered."
+                          }
+                        </div>
+                      ) : (
+                        <div className="h-64 w-full">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart
+                              data={chartData}
+                              margin={{ top: 10, right: 10, left: -25, bottom: 0 }}
+                            >
+                              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" opacity={0.3} />
+                              <XAxis
+                                dataKey="name"
+                                stroke="#64748b"
+                                fontSize={10}
+                                tickLine={false}
+                              />
+                              <YAxis
+                                stroke="#64748b"
+                                fontSize={10}
+                                tickLine={false}
+                                allowDecimals={false}
+                              />
+                              <Tooltip
+                                contentStyle={{
+                                  backgroundColor: '#0f172a',
+                                  borderColor: '#334155',
+                                  borderRadius: '12px',
+                                  color: '#f8fafc',
+                                  fontSize: '11px',
+                                }}
+                              />
+                              <Bar
+                                dataKey="closedCount"
+                                fill="#6366f1"
+                                radius={[4, 4, 0, 0]}
+                                name="Closed Appointments"
+                              />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
-                      {/* Right Side: Passphrase Security */}
-                      <div className="p-6 bg-slate-900 border border-slate-800 rounded-2xl space-y-4" id="settings-pass-pane">
-                        <h3 className="text-sm font-semibold text-slate-200 uppercase font-mono tracking-wider pb-3 border-b border-slate-800/80">
-                          Passphrase Authentication Vault
-                        </h3>
-
-                        <form onSubmit={handleSelfPasswordChange} className="space-y-4" id="settings-pass-form">
-                          <div>
-                            <label className="block text-xs text-slate-400 mb-1">Current Passphrase *</label>
-                            <input
-                              type="password"
-                              required
-                              value={selfOldPassword}
-                              onChange={(e) => setSelfOldPassword(e.target.value)}
-                              className="w-full bg-slate-950 border border-slate-800 px-3 py-2 rounded-lg text-xs text-slate-200 focus:outline-none"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-xs text-slate-400 mb-1">New Passphrase *</label>
-                            <input
-                              type="password"
-                              required
-                              value={selfNewPassword}
-                              onChange={(e) => setSelfNewPassword(e.target.value)}
-                              placeholder="Min 6 characters..."
-                              className="w-full bg-slate-950 border border-slate-800 px-3 py-2 rounded-lg text-xs text-slate-200 focus:outline-none"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-xs text-slate-400 mb-1">Confirm New Passphrase *</label>
-                            <input
-                              type="password"
-                              required
-                              value={selfConfirmPassword}
-                              onChange={(e) => setSelfConfirmPassword(e.target.value)}
-                              className="w-full bg-slate-950 border border-slate-800 px-3 py-2 rounded-lg text-xs text-slate-200 focus:outline-none"
-                            />
-                          </div>
-
-                          <button
-                            type="submit"
-                            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-lg text-xs transition cursor-pointer border border-slate-700"
-                          >
-                            Transition Passphrase
-                          </button>
-                        </form>
+                  {/* Broker & Agent Performance Playbook Bento Cards */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5 select-none opacity-95 hover:opacity-100 transition-opacity">
+                    <div className="p-5 bg-gradient-to-br from-slate-900 to-indigo-950/25 border border-slate-800/80 rounded-xl relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl" />
+                      <h4 className="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                        <TrendingUp className="w-4 h-4 text-indigo-400" />
+                        Operational Performance Playbook
+                      </h4>
+                      <p className="text-[11px] text-slate-350 leading-relaxed">
+                        {currentUser.role === 'Broker' 
+                          ? 'Maximize sales commission velocity by reviewing downline agent schedules, resolving registry conflicts in under 24 hours, and maintaining clean, active customer profiles.' 
+                          : 'Accelerate real estate lead closures by planning client follow-ups immediately after site visits. Clean client records ensure first-claim priority for commissions.'}
+                      </p>
+                      <div className="mt-3 flex gap-4 text-[10px] text-slate-400 font-semibold">
+                        <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 bg-indigo-500 rounded-full" /> Focus: High Conversion</span>
+                        <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 bg-indigo-500 rounded-full" /> Target: 85%+ Site Visits</span>
+                      </div>
+                    </div>
+                    
+                    <div className="p-5 bg-gradient-to-br from-slate-900 to-emerald-950/15 border border-slate-800/80 rounded-xl relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl" />
+                      <h4 className="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                        <Sparkles className="w-4 h-4 text-emerald-400" />
+                        Sales Pipeline & Integrity Check
+                      </h4>
+                      <p className="text-[11px] text-slate-350 leading-relaxed">
+                        Avoid dispute resolution locks by checking prospect credentials before saving. Duplicate submissions freeze bookings automatically until administrative arbitration.
+                      </p>
+                      <div className="mt-3 flex gap-4 text-[10px] text-slate-400 font-semibold">
+                        <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" /> Status: Fully Compliant</span>
+                        <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" /> System: RLS Active</span>
                       </div>
                     </div>
                   </div>
-                )}
+                </div>
+              )}
 
-              </div>
-            </div>
-          </main>
-        </div>
-      )}
+              {/* Staff Profiles segment */}
+              {(activeTab === 'Staff Segment' || activeTab === 'My Downline Agents' || activeTab === 'Personnel Directory') && (
+                <ProfilesManager
+                  currentProfile={currentUser}
+                  profiles={profiles}
+                  onRefresh={reloadData}
+                />
+              )}
 
-      {/* 4. CONFIRMATION AND UTILITY DIALOGS */}
-      {confirmConfig && (
-        <ConfirmModal
-          isOpen={confirmConfig.isOpen}
-          title={confirmConfig.title}
-          message={confirmConfig.message}
-          type={confirmConfig.type}
-          confirmText={confirmConfig.confirmText}
-          cancelText={confirmConfig.cancelText}
-          onConfirm={confirmConfig.onConfirm}
-          onCancel={confirmConfig.onCancel}
-        />
-      )}
+              {/* Onboarded Clients segment */}
+              {activeTab === 'Clients Segment' && (
+                <ClientsManager
+                  currentProfile={currentUser}
+                  clients={clients}
+                  conflicts={conflicts}
+                  appointments={appointments}
+                  profiles={profiles}
+                  onRefresh={reloadData}
+                />
+              )}
 
-      {mapConfig.isOpen && (
-        <MapModal
-          isOpen={mapConfig.isOpen}
-          project={mapConfig.project}
-          onClose={() => setMapConfig({ isOpen: false, project: null })}
-        />
-      )}
+              {/* Conflict Settle section */}
+              {activeTab === 'Resolution Panel' && (
+                <ConflictsManager
+                  currentProfile={currentUser}
+                  conflicts={conflicts}
+                  clients={clients}
+                  profiles={profiles}
+                  onRefresh={reloadData}
+                />
+              )}
 
-      {/* Persistent Toasts */}
-      <Notification toasts={toasts} onClose={removeToast} />
+              {/* Projects & developers catalog */}
+              {activeTab === 'Estates Catalog' && (
+                <ProjectsManager
+                  currentProfile={currentUser}
+                  developers={developers}
+                  projects={projects}
+                  onRefresh={reloadData}
+                />
+              )}
+
+              {/* Appointment Engagement roster */}
+              {activeTab === 'Appointments Segment' && (
+                <AppointmentsManager
+                  currentProfile={currentUser}
+                  appointments={appointments}
+                  clients={clients}
+                  projects={projects}
+                  conflicts={conflicts}
+                  profiles={profiles}
+                  onRefresh={reloadData}
+                />
+              )}
+
+              {/* Security Compliance Audit Logs */}
+              {activeTab === 'Audit Logs' && (
+                <AuditLogsManager
+                  currentProfile={currentUser}
+                  profiles={profiles}
+                />
+              )}
+
+              {/* My Profile Section */}
+              {activeTab === 'My Profile' && (
+                <MyProfileManager
+                  currentProfile={currentUser}
+                  profiles={profiles}
+                  onRefresh={reloadData}
+                />
+              )}
+
+              {/* Security & Notifications Section */}
+              {activeTab === 'Security & Notifications' && (
+                <SecurityAndNotificationsManager
+                  currentProfile={currentUser}
+                  onRefresh={reloadData}
+                />
+              )}
+            </motion.div>
+          </AnimatePresence>
+        </main>
+      </div>
+
+      {/* Persistent global confirm dialogue alert */}
+      <AlertDialog
+        isOpen={dialogOpen}
+        title={dialogConfig.title}
+        description={dialogConfig.description}
+        onConfirm={dialogConfig.onConfirm}
+        onCancel={() => setDialogOpen(false)}
+        isDestructive={true}
+        confirmText="Acknowledge & Sign Out"
+      />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <ToastProvider>
+      <DashboardShell />
+    </ToastProvider>
   );
 }

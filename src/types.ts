@@ -1,111 +1,102 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 export type UserRole = 'Admin' | 'Broker' | 'Agent' | 'Treasurer';
 
-export interface UserProfile {
-  id: string; // Format: AD-XXXX1234, BR-XXXX1234, AG-XXXX1234, TR-XXXX1234
-  firstName: string;
-  lastName: string;
-  middleName?: string;
-  address: string;
-  birthday: string; // YYYY-MM-DD
-  contactNumber: string;
+export interface Profile {
+  id: string; // AD-XXXX1111, BR-XXXX1111, etc.
+  user_id?: string;
   email: string;
+  first_name: string;
+  last_name: string;
+  middle_name?: string;
+  address?: string;
+  prc_license?: string;
+  birthdate?: string;
+  contact_number?: string;
   role: UserRole;
-  isActive: boolean;
-  isTemporaryPassword: boolean;
-  passwordHash: string; // Mock salted hash or encrypted password
-  brokerId?: string; // For Agent: who is their Broker?
-  createdAt: string;
-  updatedAt: string;
+  parent_broker_id?: string | null;
+  is_active: boolean;
+  is_temporary: boolean;
+  temp_password?: string;
+  password?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Developer {
-  id: string; // Format: DEV-XXXX1234
+  id: string; // DEV-XXXX1111
   name: string;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+  contact_person?: string;
+  contact_email?: string;
+  contact_number?: string;
+  office_address?: string;
+  status: 'Active' | 'Inactive';
+  created_at: string;
 }
 
 export interface Project {
-  id: string; // Format: PRJ-XXXX1234
-  developerId: string;
+  id: string; // PRJ-XXXX1111
+  developer_id: string;
   name: string;
   address: string;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+  latitude?: number;
+  longitude?: number;
+  status: 'Active' | 'Sold Out' | 'Inactive';
+  created_at: string;
 }
-
-export type ConflictStatus = 
-  | 'None' 
-  | 'Pending' 
-  | 'Resolved_Duplicate' 
-  | 'Resolved_FalsePositive' 
-  | 'Resolved_ChangeOwnership' 
-  | 'Surrendered';
 
 export interface Client {
-  id: string; // Format: CL-XXXX1234
-  firstName: string;
-  lastName: string;
-  middleName?: string;
-  contactNumber: string;
+  id: string; // CL-XXXX1111
+  first_name: string;
+  last_name: string;
+  middle_name?: string;
+  contact_number: string;
   address: string;
-  createdBy: string; // User ID of creator
-  isActive: boolean; // For soft-deletion
-  conflictStatus: ConflictStatus;
-  originalClientId?: string; // Reference to original client in case of resolution
-  createdAt: string;
-  updatedAt: string;
+  notes?: string;
+  facebook_link?: string;
+  is_deleted?: boolean;
+  is_access_lost?: boolean;
+  duplicateStatus?: boolean;
+  created_by: string; // profile ID representing the creator
+  created_at: string;
+  updated_at: string;
 }
 
-export type DuplicateStatus = 
-  | 'Pending' 
-  | 'Resolved_Duplicate' 
-  | 'Resolved_FalsePositive' 
-  | 'Resolved_ChangeOwnership' 
-  | 'Surrendered_Original' 
-  | 'Surrendered_Challenger';
-
 export interface DuplicateConflict {
-  id: string; // Format: DUP-XXXX1234
-  originalClientId: string;
-  originalAgentId: string;
-  challengingClientId: string;
-  challengingAgentId: string;
-  status: DuplicateStatus;
-  resolvedBy?: string; // User ID
-  resolvedAt?: string;
-  createdAt: string;
+  id: string; // DUP-XXXX1111
+  original_client_id: string;
+  challenged_client_id: string;
+  original_encoder_id: string;
+  challenging_encoder_id: string;
+  status: 'Pending' | 'Resolved' | 'Dismissed';
+  resolution?: 'Pending' | 'Marked False Positive' | 'Marked Duplicate' | 'Awarded To Challenger' | 'Surrendered Claim';
+  resolution_decision?: 'Pending' | 'Marked False Positive' | 'Marked Duplicate' | 'Awarded To Challenger' | 'Surrendered Claim';
+  resolved_by?: string;
+  resolved_at?: string;
+  created_at: string;
 }
 
 export type AppointmentType = 'Site Visit' | 'Reservation' | 'Payment' | 'Meeting' | 'Submit Requirement';
 export type AppointmentStatus = 'Open' | 'Done' | 'Cancelled';
 
 export interface Appointment {
-  id: string; // Format: APT-XXXX1234
-  clientId: string;
-  agentId: string;
-  type: AppointmentType;
-  projectId?: string; // Optional (Required only if type is 'Site Visit')
+  id: string; // APT-XXXX1111
+  client_id: string;
+  agent_id: string;
+  project_id?: string | null;
+  appointment_type: AppointmentType;
   status: AppointmentStatus;
-  datetime: string; // ISO string
-  createdAt: string;
-  updatedAt: string;
+  notes?: string;
+  address?: string; // Auto-populated or manual
+  appointment_time: string;
+  notified1Hr?: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
-// Log or Audit trail (optional helper for quality, not bloated)
 export interface AuditLog {
   id: string;
-  userId: string;
-  userEmail: string;
-  userRole: UserRole;
-  action: string;
-  details: string;
   timestamp: string;
+  user_id: string;
+  action: string;
+  affected_record_id: string;
 }
+

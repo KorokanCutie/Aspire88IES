@@ -1,33 +1,95 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
-@theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+/* High contrast light mode overrides */
+.theme-light {
+  background-color: #f8fafc !important;
+  color: #000000 !important;
 }
 
-/* Base custom styles to reinforce modern CRM luxury branding */
-body {
-  font-family: var(--font-sans);
-  background-color: #020617; /* Slate 950 */
-  color: #f1f5f9; /* Slate 100 */
+.theme-light header,
+.theme-light aside,
+.theme-light .bg-slate-900,
+.theme-light .bg-slate-950,
+.theme-light .bg-slate-900\/45,
+.theme-light .bg-slate-900\/80,
+.theme-light .bg-slate-950\/30,
+.theme-light .bg-slate-950\/40,
+.theme-light .bg-slate-950\/80 {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border-color: #000000 !important;
 }
 
-/* Custom Webkit scrollbar for expensive CRM aesthetics */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+.theme-light td,
+.theme-light th,
+.theme-light tr,
+.theme-light border-slate-800,
+.theme-light .border-slate-800\/60,
+.theme-light .border-slate-800\/80,
+.theme-light .border-slate-800\/90,
+.theme-light .border-slate-805,
+.theme-light .border-slate-850,
+.theme-light .border-slate-850\/40,
+.theme-light .border-slate-800 {
+  border-color: #000000 !important;
 }
 
-::-webkit-scrollbar-track {
-  background: #020617;
+.theme-light input,
+.theme-light select,
+.theme-light textarea {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 2px solid #000000 !important;
 }
 
-::-webkit-scrollbar-thumb {
-  background: #1e293b;
-  border-radius: 4px;
+.theme-light button {
+  border-color: #000000 !important;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+.theme-light button:hover {
+  background-color: #f1f5f9 !important;
+}
+
+.theme-light .text-slate-100,
+.theme-light .text-slate-200,
+.theme-light .text-slate-300,
+.theme-light .text-slate-205,
+.theme-light .text-slate-400,
+.theme-light .text-slate-500 {
+  color: #000000 !important;
+}
+
+.theme-light .text-slate-400 {
+  color: #334155 !important;
+}
+
+.theme-light .text-slate-500 {
+  color: #475569 !important;
+}
+
+.theme-light .text-indigo-400 {
+  color: #4f46e5 !important;
+  font-weight: 700 !important;
+}
+
+.theme-light .text-emerald-400 {
+  color: #15803d !important;
+}
+
+.theme-light .bg-emerald-950,
+.theme-light .bg-emerald-950\/80 {
+  background-color: #dcfce7 !important;
+  color: #14532d !important;
+  border-color: #166534 !important;
+}
+
+.theme-light .bg-blue-950\/60 {
+  background-color: #dbeafe !important;
+  color: #1e3a8a !important;
+  border-color: #1e40af !important;
+}
+
+.theme-light .bg-slate-950\/20:hover,
+.theme-light .hover\:bg-slate-950\/20:hover {
+  background-color: #e2e8f0 !important;
 }
