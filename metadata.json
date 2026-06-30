@@ -1,0 +1,6 @@
+{
+  "name": "Aspire88 Estates Corporation Integrated Enterprise System",
+  "description": "Enterprise Resource Planning and Integrated Enterprise System for Aspire88 Estates Corporation, featuring RBAC, Client Identity Conflict Resolution, and real-time PST clock tracking.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
