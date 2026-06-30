@@ -96,11 +96,17 @@
 
 /* Professional Print Stylesheet */
 @media print {
-  html, body {
+  html, body, #root, .min-h-screen, .flex-1, .flex, main {
+    background: #ffffff !important;
     background-color: #ffffff !important;
     color: #000000 !important;
     font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif !important;
     font-size: 11pt !important;
+    display: block !important;
+    position: static !important;
+    overflow: visible !important;
+    height: auto !important;
+    min-height: auto !important;
   }
 
   header, aside, footer, nav, button, input, select, .print-hidden, .no-print {
@@ -114,6 +120,7 @@
     top: 0 !important;
     width: 100% !important;
     background-color: #ffffff !important;
+    background: #ffffff !important;
     color: #000000 !important;
     padding: 20px !important;
     box-sizing: border-box !important;

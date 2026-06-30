@@ -471,7 +471,10 @@ export function AppointmentsManager({
           {/* Print Schedule Button */}
           <button
             type="button"
-            onClick={() => window.print()}
+            onClick={() => {
+              window.focus();
+              window.print();
+            }}
             className="bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 px-3.5 py-2 text-xs font-semibold rounded-xl flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
             title="Generate a clean, printable view of currently filtered appointments"
           >
@@ -1164,25 +1167,53 @@ export function AppointmentsManager({
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-slate-800/80 flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsCreating(false);
-                    setEditingAppt(null);
-                  }}
-                  className="px-4 py-2 bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800 rounded-xl text-xs font-semibold cursor-pointer transition-all animate-fade-in"
-                >
-                  {editingAppt && editingAppt.status !== 'Open' ? 'Close View' : 'Cancel'}
-                </button>
-                {(!editingAppt || editingAppt.status === 'Open') && (
-                  <button
-                    type="submit"
-                    className="bg-emerald-500 hover:bg-emerald-450 text-slate-950 px-5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer font-sans"
-                  >
-                    Save Schedule Time
-                  </button>
+              <div className="pt-4 border-t border-slate-800/80 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
+                {/* Direct Finalize/Cancel Actions for Open Tickets */}
+                {editingAppt && editingAppt.status === 'Open' && currentProfile.role !== 'Treasurer' ? (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => triggerStatusChange(editingAppt, 'Done')}
+                      className="flex-1 sm:flex-none p-2 px-3 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-400 font-bold rounded-xl border border-emerald-800/40 transition-all text-xs uppercase flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                      title="Mark appointment as Done"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      Done
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => triggerStatusChange(editingAppt, 'Cancelled')}
+                      className="flex-1 sm:flex-none p-2 px-3 bg-rose-955 hover:bg-rose-900 text-rose-300 font-bold rounded-xl border border-rose-808/40 transition-all text-xs uppercase flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                      title="Cancel this appointment"
+                    >
+                      <XCircle className="w-4 h-4" />
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <div className="hidden sm:block" />
                 )}
+
+                <div className="flex items-center justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsCreating(false);
+                      setEditingAppt(null);
+                    }}
+                    className="px-4 py-2 bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800 rounded-xl text-xs font-semibold cursor-pointer transition-all animate-fade-in"
+                  >
+                    {editingAppt && editingAppt.status !== 'Open' ? 'Close View' : 'Close'}
+                  </button>
+                  {(!editingAppt || editingAppt.status === 'Open') && (
+                    <button
+                      type="submit"
+                      className="bg-emerald-500 hover:bg-emerald-450 text-slate-950 px-5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer font-sans"
+                    >
+                      Save Schedule Time
+                    </button>
+                  )}
+                </div>
               </div>
             </form>
           </div>
