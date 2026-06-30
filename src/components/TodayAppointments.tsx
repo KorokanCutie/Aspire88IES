@@ -12,6 +12,8 @@ interface TodayAppointmentsProps {
   projects: Project[];
   onViewAllClick: () => void;
   onRefresh: () => void;
+  startDateFilter?: string;
+  endDateFilter?: string;
 }
 
 export function TodayAppointments({
@@ -22,6 +24,8 @@ export function TodayAppointments({
   projects,
   onViewAllClick,
   onRefresh,
+  startDateFilter,
+  endDateFilter,
 }: TodayAppointmentsProps) {
   const { toast } = useToast();
 
@@ -73,13 +77,29 @@ export function TodayAppointments({
     }
     if (!isRoleMatch) return false;
 
-    // 2. Date match
+    // 2. Date match or Range match
     const apptDate = new Date(appt.appointment_time);
-    return (
-      apptDate.getFullYear() === today.getFullYear() &&
-      apptDate.getMonth() === today.getMonth() &&
-      apptDate.getDate() === today.getDate()
-    );
+    
+    if (startDateFilter || endDateFilter) {
+      const apptDateOnly = new Date(apptDate.getFullYear(), apptDate.getMonth(), apptDate.getDate()).getTime();
+      if (startDateFilter) {
+        const start = new Date(startDateFilter);
+        const startOnly = new Date(start.getFullYear(), start.getMonth(), start.getDate()).getTime();
+        if (apptDateOnly < startOnly) return false;
+      }
+      if (endDateFilter) {
+        const end = new Date(endDateFilter);
+        const endOnly = new Date(end.getFullYear(), end.getMonth(), end.getDate()).getTime();
+        if (apptDateOnly > endOnly) return false;
+      }
+      return true;
+    } else {
+      return (
+        apptDate.getFullYear() === today.getFullYear() &&
+        apptDate.getMonth() === today.getMonth() &&
+        apptDate.getDate() === today.getDate()
+      );
+    }
   });
 
   // Sort them chronologically by time
@@ -183,18 +203,20 @@ export function TodayAppointments({
         <div className="flex items-center gap-2">
           <Calendar className="w-4 h-4 text-rose-500 animate-pulse" />
           <h3 className="text-sm font-bold text-slate-100 uppercase tracking-wider">
-            Today's Scheduled Appointments ({sortedTodayAppts.length})
+            {startDateFilter || endDateFilter ? 'Scheduled Appointments' : "Today's Scheduled Appointments"} ({sortedTodayAppts.length})
           </h3>
         </div>
         <span className="text-[10px] text-slate-400 font-mono">
-          {today.toLocaleDateString('en-US', { dateStyle: 'medium' })}
+          {startDateFilter || endDateFilter ? `${startDateFilter || 'All-Time'} to ${endDateFilter || 'All-Time'}` : today.toLocaleDateString('en-US', { dateStyle: 'medium' })}
         </span>
       </div>
 
       {sortedTodayAppts.length === 0 ? (
         <div className="py-8 text-center bg-slate-950/30 border border-slate-850/40 rounded-xl">
           <CheckCircle2 className="w-7 h-7 text-emerald-500/80 mx-auto mb-2" />
-          <p className="text-xs font-medium text-slate-400">No open appointments booked for today.</p>
+          <p className="text-xs font-medium text-slate-400">
+            {startDateFilter || endDateFilter ? 'No open appointments found for the selected timeframe.' : 'No open appointments booked for today.'}
+          </p>
           <p className="text-[10px] text-slate-500 mt-1">Enjoy your schedule, or view your wider client pipelines.</p>
         </div>
       ) : (
@@ -276,8 +298,8 @@ export function TodayAppointments({
                           </div>
                         </td>
                         <td className="py-4 px-5">
-                          <span className="px-2.5 py-1 rounded-xl text-[10px] font-bold uppercase tracking-wider inline-flex items-center gap-1 bg-blue-950/60 border border-blue-900/40 text-blue-400">
-                            <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                          <span className="px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-widest inline-flex items-center gap-1.5 shadow-sm bg-indigo-500/10 border border-indigo-500/30 text-indigo-400">
+                            <span className="w-2 h-2 rounded-full animate-pulse bg-indigo-400 shadow-[0_0_6px_rgba(99,102,241,0.6)]" />
                             {appt.status}
                           </span>
                         </td>

@@ -25,16 +25,16 @@ export interface AppPropertiesType {
 // Default property values - MODIFY THESE DIRECTLY TO CHANGE THE APPLICATION BEHAVIOR
 const DEFAULT_PROPERTIES: AppPropertiesType = {
   // 1. Toggle sandbox quick-testing accounts at the bottom of the login screen
-  enableQuickTestingAccounts: true, // Set to false for pure production
+  enableQuickTestingAccounts: false, // Set to false for pure production
 
   // 2. Environment Mode: 'production' | 'sandbox'
-  mode: 'production',
+  mode: 'sandbox',
 
   // 3. Database Selection: false (Live Supabase Production DB) | true (Test DB / Offline Sandbox)
-  useTestDatabase: false, 
+  useTestDatabase: true, 
   testDatabaseConfig: {
-    supabaseUrl: '',
-    supabaseAnonKey: '',
+    supabaseUrl: 'https://wfahmglysivxwxdflvoj.supabase.co',
+    supabaseAnonKey: 'sb_publishable_lbh5dxjXNnpfaA69SjoOnQ_0czrHOyT',
   }
 };
 

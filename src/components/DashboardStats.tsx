@@ -195,7 +195,7 @@ export function DashboardStats({ currentProfile, profiles, clients, projects, co
         </div>
 
         <div className="mt-4">
-          <div className="text-3xl font-black text-slate-100 tracking-tight leading-none font-sans font-sans">
+          <div className="text-3xl font-black text-slate-100 tracking-tight leading-none font-sans">
             {r !== 'Treasurer' && visibleAppointments.filter(a => a.status === 'Open').length}
             {r === 'Treasurer' && projects.length}
           </div>

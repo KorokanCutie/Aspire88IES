@@ -2,8 +2,18 @@
 // Aspire88 Estates Corporation Integrated Enterprise System - Resend Email Integration Utility
 // =============================================================================
 
+import { AppProperties } from './appProperties';
+
 export async function sendEmail(to: string, subject: string, html: string): Promise<any> {
-  console.log(`[Resend Email] Routing email send request to server proxy for ${to} with subject: "${subject}"...`);
+  let finalSubject = subject;
+  let finalHtml = html;
+
+  if (AppProperties.mode === 'sandbox') {
+    finalSubject = `[TEST] ${subject}`;
+    finalHtml = `<div style="color: #ef4444; font-weight: 800; font-family: system-ui, -apple-system, sans-serif; padding: 12px; border: 2px solid #fca5a5; background-color: #fef2f2; border-radius: 8px; margin-bottom: 16px; text-align: center; font-size: 14px; letter-spacing: 0.05em; text-transform: uppercase;">[THIS IS JUST A TEST]</div>${html}`;
+  }
+
+  console.log(`[Resend Email] Routing email send request to server proxy for ${to} with subject: "${finalSubject}" (Sandbox: ${AppProperties.mode === 'sandbox'})...`);
 
   try {
     const response = await fetch('/api/send-email', {
@@ -13,8 +23,8 @@ export async function sendEmail(to: string, subject: string, html: string): Prom
       },
       body: JSON.stringify({
         to: to,
-        subject: subject,
-        html: html
+        subject: finalSubject,
+        html: finalHtml
       })
     });
 

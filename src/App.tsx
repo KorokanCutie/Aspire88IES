@@ -89,6 +89,38 @@ function DashboardShell() {
     return (localStorage.getItem('aspire88_theme') as 'dark' | 'light') || 'dark';
   });
 
+  // Overview Tab Date Range States
+  const [overviewStartDate, setOverviewStartDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [overviewEndDate, setOverviewEndDate] = useState(() => new Date().toISOString().split('T')[0]);
+
+  // Filter helper for date range
+  const filterByDateRange = <T extends { created_at?: string; appointment_time?: string }>(
+    list: T[],
+    startDateStr: string,
+    endDateStr: string,
+    dateKey: 'created_at' | 'appointment_time' = 'created_at'
+  ): T[] => {
+    if (!startDateStr && !endDateStr) return list;
+    return list.filter(item => {
+      const itemDateStr = item[dateKey] || item['created_at'];
+      if (!itemDateStr) return true;
+      const date = new Date(itemDateStr);
+      const itemVal = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+
+      if (startDateStr) {
+        const start = new Date(startDateStr);
+        const startVal = new Date(start.getFullYear(), start.getMonth(), start.getDate()).getTime();
+        if (itemVal < startVal) return false;
+      }
+      if (endDateStr) {
+        const end = new Date(endDateStr);
+        const endVal = new Date(end.getFullYear(), end.getMonth(), end.getDate()).getTime();
+        if (itemVal > endVal) return false;
+      }
+      return true;
+    });
+  };
+
   const toggleTheme = () => {
     const nextTheme = theme === 'dark' ? 'light' : 'dark';
     setTheme(nextTheme);
@@ -378,7 +410,23 @@ function DashboardShell() {
   const closedApptsThisMonth = appointments.filter(appt => {
     if (appt.status !== 'Done') return false;
     const date = new Date(appt.appointment_time);
-    return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+    
+    if (overviewStartDate || overviewEndDate) {
+      const dateVal = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+      if (overviewStartDate) {
+        const start = new Date(overviewStartDate);
+        const startVal = new Date(start.getFullYear(), start.getMonth(), start.getDate()).getTime();
+        if (dateVal < startVal) return false;
+      }
+      if (overviewEndDate) {
+        const end = new Date(overviewEndDate);
+        const endVal = new Date(end.getFullYear(), end.getMonth(), end.getDate()).getTime();
+        if (dateVal > endVal) return false;
+      }
+      return true;
+    } else {
+      return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+    }
   });
 
   const getChartData = () => {
@@ -425,6 +473,31 @@ function DashboardShell() {
   };
 
   const chartData = getChartData();
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  const last7Str = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 7);
+    return d.toISOString().split('T')[0];
+  })();
+  const last30Str = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d.toISOString().split('T')[0];
+  })();
+  const thisMonthStr = (() => {
+    const firstDay = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    const lastDay = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0);
+    return {
+      first: firstDay.toISOString().split('T')[0],
+      last: lastDay.toISOString().split('T')[0]
+    };
+  })();
+
+  const isTodayActive = overviewStartDate === todayStr && overviewEndDate === todayStr;
+  const isPast7Active = overviewStartDate === last7Str && overviewEndDate === todayStr;
+  const isThisMonthActive = overviewStartDate === thisMonthStr.first && overviewEndDate === thisMonthStr.last;
+  const isPast30Active = overviewStartDate === last30Str && overviewEndDate === todayStr;
 
   return (
     <div className={`min-h-screen bg-slate-950 text-slate-100 flex flex-col ${theme === 'light' ? 'theme-light' : 'theme-dark'}`}>
@@ -634,14 +707,114 @@ function DashboardShell() {
                     </div>
                   </div>
 
+                  {/* Date Range Picker Component */}
+                  <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block sm:inline shrink-0">
+                        Workstation Timeframe Filter:
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="date"
+                          value={overviewStartDate}
+                          onChange={(e) => setOverviewStartDate(e.target.value)}
+                          className="bg-slate-950 border border-slate-800 rounded-lg py-1.5 px-2.5 text-xs text-slate-300 outline-none focus:border-indigo-500 font-sans cursor-pointer"
+                        />
+                        <span className="text-slate-500 text-xs">to</span>
+                        <input
+                          type="date"
+                          value={overviewEndDate}
+                          onChange={(e) => setOverviewEndDate(e.target.value)}
+                          className="bg-slate-950 border border-slate-800 rounded-lg py-1.5 px-2.5 text-xs text-slate-300 outline-none focus:border-indigo-500 font-sans cursor-pointer"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const todayStr = new Date().toISOString().split('T')[0];
+                          setOverviewStartDate(todayStr);
+                          setOverviewEndDate(todayStr);
+                        }}
+                        className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all duration-200 cursor-pointer ${
+                          isTodayActive
+                            ? 'bg-indigo-600 border border-indigo-500 text-white shadow-sm shadow-indigo-950/20'
+                            : 'bg-slate-950 hover:bg-slate-800 border border-slate-850 text-slate-300'
+                        }`}
+                      >
+                        Today
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const start = new Date();
+                          start.setDate(start.getDate() - 7);
+                          setOverviewStartDate(start.toISOString().split('T')[0]);
+                          setOverviewEndDate(new Date().toISOString().split('T')[0]);
+                        }}
+                        className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all duration-200 cursor-pointer ${
+                          isPast7Active
+                            ? 'bg-indigo-600 border border-indigo-500 text-white shadow-sm shadow-indigo-950/20'
+                            : 'bg-slate-950 hover:bg-slate-800 border border-slate-850 text-slate-300'
+                        }`}
+                      >
+                        Past 7 Days
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const firstDay = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+                          const lastDay = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0);
+                          setOverviewStartDate(firstDay.toISOString().split('T')[0]);
+                          setOverviewEndDate(lastDay.toISOString().split('T')[0]);
+                        }}
+                        className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all duration-200 cursor-pointer ${
+                          isThisMonthActive
+                            ? 'bg-indigo-600 border border-indigo-500 text-white shadow-sm shadow-indigo-950/20'
+                            : 'bg-slate-950 hover:bg-slate-800 border border-slate-850 text-slate-300'
+                        }`}
+                      >
+                        This Month
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const start = new Date();
+                          start.setDate(start.getDate() - 30);
+                          setOverviewStartDate(start.toISOString().split('T')[0]);
+                          setOverviewEndDate(new Date().toISOString().split('T')[0]);
+                        }}
+                        className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all duration-200 cursor-pointer ${
+                          isPast30Active
+                            ? 'bg-indigo-600 border border-indigo-500 text-white shadow-sm shadow-indigo-950/20'
+                            : 'bg-slate-950 hover:bg-slate-800 border border-slate-850 text-slate-300'
+                        }`}
+                      >
+                        Past 30 Days
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOverviewStartDate('');
+                          setOverviewEndDate('');
+                        }}
+                        className="px-2.5 py-1.5 bg-rose-950/40 hover:bg-rose-950/60 border border-rose-900/30 text-rose-400 rounded-lg text-[11px] font-bold transition-colors cursor-pointer"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  </div>
+
                   {/* Operational Stats indicators */}
                   <DashboardStats
                     currentProfile={currentUser}
                     profiles={profiles}
-                    clients={clients}
-                    projects={projects}
-                    conflicts={conflicts}
-                    appointments={appointments}
+                    clients={filterByDateRange(clients, overviewStartDate, overviewEndDate, 'created_at')}
+                    projects={filterByDateRange(projects, overviewStartDate, overviewEndDate, 'created_at')}
+                    conflicts={filterByDateRange(conflicts, overviewStartDate, overviewEndDate, 'created_at')}
+                    appointments={filterByDateRange(appointments, overviewStartDate, overviewEndDate, 'appointment_time')}
                   />
 
                   {/* Today's Appointments List for Broker & Agent */}
@@ -654,6 +827,8 @@ function DashboardShell() {
                       projects={projects}
                       onViewAllClick={() => setActiveTab('Appointments Segment')}
                       onRefresh={reloadData}
+                      startDateFilter={overviewStartDate}
+                      endDateFilter={overviewEndDate}
                     />
                   )}
 
@@ -664,8 +839,8 @@ function DashboardShell() {
                         <BarChart3 className="w-4.5 h-4.5 text-indigo-400" />
                         <h3 className="text-xs font-bold text-slate-100 uppercase tracking-wider">
                           {currentUser.role === 'Agent'
-                            ? `Closed Appointments per Appointment Type (${now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })})`
-                            : `Closed Appointments per Agent (${now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })})`
+                            ? `Closed Appointments per Appointment Type (${overviewStartDate || overviewEndDate ? `${overviewStartDate || 'All-Time'} to ${overviewEndDate || 'All-Time'}` : now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })})`
+                            : `Closed Appointments per Agent (${overviewStartDate || overviewEndDate ? `${overviewStartDate || 'All-Time'} to ${overviewEndDate || 'All-Time'}` : now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })})`
                           }
                         </h3>
                       </div>
@@ -673,7 +848,7 @@ function DashboardShell() {
                       {chartData.length === 0 ? (
                         <div className="py-12 text-center text-xs text-slate-500 italic">
                           {currentUser.role === 'Agent'
-                            ? "No closed appointments recorded for your account this month."
+                            ? (overviewStartDate || overviewEndDate ? "No closed appointments recorded for your account in the selected timeframe." : "No closed appointments recorded for your account this month.")
                             : "No active agents or brokers registered."
                           }
                         </div>

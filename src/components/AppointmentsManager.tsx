@@ -3,7 +3,7 @@ import { Appointment, Profile, Client, Project, AppointmentType, AppointmentStat
 import { db, generateAlphaId } from '../db';
 import { useToast } from './Toast';
 import { AlertDialog } from './AlertDialog';
-import { Calendar, Plus, Search, Building, Clock, Lock, CheckCircle2, XCircle, X, Edit, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, Plus, Search, Building, Clock, Lock, CheckCircle2, XCircle, X, Edit, Eye, ChevronLeft, ChevronRight, Printer, CalendarDays, Table } from 'lucide-react';
 
 interface AppointmentsManagerProps {
   currentProfile: Profile;
@@ -28,14 +28,19 @@ export function AppointmentsManager({
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('Open');
+  const [startDate, setStartDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [clientSearch, setClientSearch] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [editingAppt, setEditingAppt] = useState<Appointment | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [viewMode, setViewMode] = useState<'table' | 'calendar'>('table');
+  const [currentDate, setCurrentDate] = useState(() => new Date());
   const recordsPerPage = 20;
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, statusFilter]);
+  }, [searchTerm, statusFilter, startDate, endDate]);
 
   // Form Fields
   const [selectedClientId, setSelectedClientId] = useState('');
@@ -133,6 +138,18 @@ export function AppointmentsManager({
   const sortedMyClients = [...myEligibleClients].sort(sortClientsAlphabetically);
   const sortedOtherClients = [...otherEligibleClients].sort(sortClientsAlphabetically);
 
+  const filteredMyClients = sortedMyClients.filter(client => {
+    const term = clientSearch.toLowerCase();
+    const fullName = `${client.first_name} ${client.middle_name ? client.middle_name + ' ' : ''}${client.last_name}`.toLowerCase();
+    return fullName.includes(term) || client.id.toLowerCase().includes(term);
+  });
+
+  const filteredOtherClients = sortedOtherClients.filter(client => {
+    const term = clientSearch.toLowerCase();
+    const fullName = `${client.first_name} ${client.middle_name ? client.middle_name + ' ' : ''}${client.last_name}`.toLowerCase();
+    return fullName.includes(term) || client.id.toLowerCase().includes(term);
+  });
+
   // Sort active projects alphabetically
   const sortedActiveProjects = [...projects.filter(p => p.status === 'Active')].sort((a, b) => a.name.localeCompare(b.name));
 
@@ -162,7 +179,24 @@ export function AppointmentsManager({
 
     const matchesStatus = statusFilter === 'All' || a.status === statusFilter;
 
-    return matchesSearch && matchesStatus;
+    let matchesDate = true;
+    if (startDate || endDate) {
+      const apptDate = new Date(a.appointment_time);
+      const apptDateOnly = new Date(apptDate.getFullYear(), apptDate.getMonth(), apptDate.getDate()).getTime();
+      
+      if (startDate) {
+        const start = new Date(startDate);
+        const startOnly = new Date(start.getFullYear(), start.getMonth(), start.getDate()).getTime();
+        if (apptDateOnly < startOnly) matchesDate = false;
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        const endOnly = new Date(end.getFullYear(), end.getMonth(), end.getDate()).getTime();
+        if (apptDateOnly > endOnly) matchesDate = false;
+      }
+    }
+
+    return matchesSearch && matchesStatus && matchesDate;
   });
 
   const getClientName = (id: string) => {
@@ -328,8 +362,99 @@ export function AppointmentsManager({
     setDialogOpen(true);
   };
 
+  const todayStr = new Date().toISOString().split('T')[0];
+  const next7Str = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 7);
+    return d.toISOString().split('T')[0];
+  })();
+  const next30Str = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 30);
+    return d.toISOString().split('T')[0];
+  })();
+  const prev30Str = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d.toISOString().split('T')[0];
+  })();
+
+  const isTodayActive = startDate === todayStr && endDate === todayStr;
+  const isNext7Active = startDate === todayStr && endDate === next7Str;
+  const isNext30Active = startDate === todayStr && endDate === next30Str;
+  const isPast30Active = startDate === prev30Str && endDate === todayStr;
+
+  const getSelectedTimeframeLabel = () => {
+    if (isTodayActive) return 'Today';
+    if (isNext7Active) return 'Next 7 Days';
+    if (isNext30Active) return 'Next 30 Days';
+    if (isPast30Active) return 'Past 30 Days';
+    if (!startDate && !endDate) return 'All-Time';
+    
+    const format = (dStr: string) => {
+      if (!dStr) return 'Anytime';
+      const d = new Date(dStr);
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    };
+    return `${format(startDate)} to ${format(endDate)}`;
+  };
+
+  const getDaysInMonth = (date: Date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDayIndex = new Date(year, month, 1).getDay();
+    const totalDays = new Date(year, month + 1, 0).getDate();
+    
+    const days = [];
+    const prevMonthTotalDays = new Date(year, month, 0).getDate();
+    for (let i = firstDayIndex - 1; i >= 0; i--) {
+      days.push({
+        day: prevMonthTotalDays - i,
+        isCurrentMonth: false,
+        date: new Date(year, month - 1, prevMonthTotalDays - i)
+      });
+    }
+    
+    for (let i = 1; i <= totalDays; i++) {
+      days.push({
+        day: i,
+        isCurrentMonth: true,
+        date: new Date(year, month, i)
+      });
+    }
+    
+    const remainingCells = 42 - days.length;
+    for (let i = 1; i <= remainingCells; i++) {
+      days.push({
+        day: i,
+        isCurrentMonth: false,
+        date: new Date(year, month + 1, i)
+      });
+    }
+    
+    return days;
+  };
+
+  const getAppointmentsForDay = (dayDate: Date) => {
+    return visibleAppointments.filter(appt => {
+      const apptDate = new Date(appt.appointment_time);
+      return apptDate.getDate() === dayDate.getDate() &&
+             apptDate.getMonth() === dayDate.getMonth() &&
+             apptDate.getFullYear() === dayDate.getFullYear();
+    });
+  };
+
+  const prevMonth = () => {
+    setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+  };
+
+  const nextMonth = () => {
+    setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+  };
+
   return (
-    <div className="space-y-6">
+    <div>
+      <div className="space-y-6 print:hidden">
       {/* Title block */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-800/60 pb-5">
         <div>
@@ -342,23 +467,61 @@ export function AppointmentsManager({
           </p>
         </div>
 
-        {currentProfile.role !== 'Treasurer' && (
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-center">
+          {/* Print Schedule Button */}
           <button
-            onClick={() => {
-              setIsCreating(true);
-              setEditingAppt(null);
-              setSelectedClientId('');
-              setSelectedProjectId('');
-              setApptType('Meeting');
-              setApptNotes('');
-              setApptTime('');
-            }}
-            className="self-start sm:self-center bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-400 hover:to-indigo-500 text-slate-100 px-4 py-2 text-xs font-semibold rounded-xl flex items-center gap-2 shadow-lg shadow-indigo-950/20 hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer"
+            type="button"
+            onClick={() => window.print()}
+            className="bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 px-3.5 py-2 text-xs font-semibold rounded-xl flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
+            title="Generate a clean, printable view of currently filtered appointments"
           >
-            <Plus className="w-4 h-4" />
-            Book Appointment
+            <Printer className="w-3.5 h-3.5 text-slate-400" />
+            <span>Print Schedule</span>
           </button>
-        )}
+
+          {/* Toggle Calendar View Button */}
+          <button
+            type="button"
+            onClick={() => setViewMode(prev => prev === 'table' ? 'calendar' : 'table')}
+            className={`px-3.5 py-2 text-xs font-semibold rounded-xl flex items-center gap-1.5 shadow-md transition-all cursor-pointer border ${
+              viewMode === 'calendar'
+                ? 'bg-indigo-950/50 text-indigo-400 border-indigo-900/30'
+                : 'bg-slate-900 hover:bg-slate-800 text-slate-200 border-slate-800'
+            }`}
+            title="Switch between table list and month grid view"
+          >
+            {viewMode === 'table' ? (
+              <>
+                <CalendarDays className="w-3.5 h-3.5 text-slate-400" />
+                <span>Calendar View</span>
+              </>
+            ) : (
+              <>
+                <Table className="w-3.5 h-3.5 text-slate-400" />
+                <span>Table View</span>
+              </>
+            )}
+          </button>
+
+          {currentProfile.role !== 'Treasurer' && (
+            <button
+              type="button"
+              onClick={() => {
+                setIsCreating(true);
+                setEditingAppt(null);
+                setSelectedClientId('');
+                setSelectedProjectId('');
+                setApptType('Meeting');
+                setApptNotes('');
+                setApptTime('');
+              }}
+              className="bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-400 hover:to-indigo-500 text-slate-100 px-4 py-2 text-xs font-semibold rounded-xl flex items-center gap-1.5 shadow-lg shadow-indigo-950/20 hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Book Appointment</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Scheduler search input & Status filter */}
@@ -387,8 +550,249 @@ export function AppointmentsManager({
         </div>
       </div>
 
+      {/* Date Range Picker Row */}
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4 shadow-lg">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block sm:inline shrink-0">
+            Appointment Timeframe:
+          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="bg-slate-950 border border-slate-800 rounded-lg py-1.5 px-2.5 text-xs text-slate-300 outline-none focus:border-indigo-500 font-sans cursor-pointer"
+              />
+              <span className="text-slate-500 text-xs font-medium">to</span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="bg-slate-950 border border-slate-800 rounded-lg py-1.5 px-2.5 text-xs text-slate-300 outline-none focus:border-indigo-500 font-sans cursor-pointer"
+              />
+            </div>
+
+            {/* Selected active timeframe display badge */}
+            <span className="px-2 py-1 bg-indigo-950/40 border border-indigo-900/30 text-indigo-400 rounded-lg text-[10px] font-bold font-mono">
+              Active: {getSelectedTimeframeLabel()}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => {
+              const todayStr = new Date().toISOString().split('T')[0];
+              setStartDate(todayStr);
+              setEndDate(todayStr);
+            }}
+            className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all duration-200 cursor-pointer ${
+              isTodayActive
+                ? 'bg-indigo-600 border border-indigo-500 text-white shadow-sm shadow-indigo-950/20'
+                : 'bg-slate-950 hover:bg-slate-800 border border-slate-850 text-slate-300'
+            }`}
+          >
+            Today
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const todayObj = new Date();
+              const next7 = new Date();
+              next7.setDate(todayObj.getDate() + 7);
+              setStartDate(todayObj.toISOString().split('T')[0]);
+              setEndDate(next7.toISOString().split('T')[0]);
+            }}
+            className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all duration-200 cursor-pointer ${
+              isNext7Active
+                ? 'bg-indigo-600 border border-indigo-500 text-white shadow-sm shadow-indigo-950/20'
+                : 'bg-slate-950 hover:bg-slate-800 border border-slate-850 text-slate-300'
+            }`}
+          >
+            Next 7 Days
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const todayObj = new Date();
+              const next30 = new Date();
+              next30.setDate(todayObj.getDate() + 30);
+              setStartDate(todayObj.toISOString().split('T')[0]);
+              setEndDate(next30.toISOString().split('T')[0]);
+            }}
+            className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all duration-200 cursor-pointer ${
+              isNext30Active
+                ? 'bg-indigo-600 border border-indigo-500 text-white shadow-sm shadow-indigo-950/20'
+                : 'bg-slate-950 hover:bg-slate-800 border border-slate-850 text-slate-300'
+            }`}
+          >
+            Next 30 Days
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const todayObj = new Date();
+              const prev30 = new Date();
+              prev30.setDate(todayObj.getDate() - 30);
+              setStartDate(prev30.toISOString().split('T')[0]);
+              setEndDate(todayObj.toISOString().split('T')[0]);
+            }}
+            className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all duration-200 cursor-pointer ${
+              isPast30Active
+                ? 'bg-indigo-600 border border-indigo-500 text-white shadow-sm shadow-indigo-950/20'
+                : 'bg-slate-950 hover:bg-slate-800 border border-slate-850 text-slate-300'
+            }`}
+          >
+            Past 30 Days
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setStartDate('');
+              setEndDate('');
+            }}
+            className="px-2.5 py-1.5 bg-rose-950/40 hover:bg-rose-950/60 border border-rose-900/30 text-rose-400 rounded-lg text-[11px] font-bold transition-colors cursor-pointer"
+          >
+            Clear
+          </button>
+        </div>
+      </div>
+
+      {/* Calendar View Component */}
+      {viewMode === 'calendar' && (
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl space-y-4 print:hidden animate-fade-in">
+          {/* Calendar Month Navigation Sub-Header */}
+          <div className="flex items-center justify-between border-b border-slate-800/60 pb-4">
+            <div className="flex items-center gap-2">
+              <CalendarDays className="w-5 h-5 text-indigo-400" />
+              <h3 className="text-sm font-bold text-slate-100 uppercase tracking-wider">
+                {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+              </h3>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={prevMonth}
+                className="p-1.5 bg-slate-950 border border-slate-850 hover:bg-slate-800 text-slate-300 rounded-lg transition-colors cursor-pointer"
+                title="Previous Month"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrentDate(new Date())}
+                className="px-2.5 py-1.5 bg-slate-950 hover:bg-slate-800 border border-slate-850 text-slate-300 rounded-lg text-[10px] font-bold font-mono transition-colors cursor-pointer"
+              >
+                Today Month
+              </button>
+              <button
+                type="button"
+                onClick={nextMonth}
+                className="p-1.5 bg-slate-950 border border-slate-850 hover:bg-slate-800 text-slate-300 rounded-lg transition-colors cursor-pointer"
+                title="Next Month"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Calendar Weekdays Header Grid */}
+          <div className="grid grid-cols-7 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wider py-1 border-b border-slate-800/30">
+            <div>Sun</div>
+            <div>Mon</div>
+            <div>Tue</div>
+            <div>Wed</div>
+            <div>Thu</div>
+            <div>Fri</div>
+            <div>Sat</div>
+          </div>
+
+          {/* Calendar Day Grid (42 cells) */}
+          <div className="grid grid-cols-7 gap-1 sm:gap-2">
+            {getDaysInMonth(currentDate).map(({ day, isCurrentMonth, date: dayDate }, index) => {
+              const dayAppts = getAppointmentsForDay(dayDate);
+              const isToday = dayDate.toDateString() === new Date().toDateString();
+              
+              return (
+                <div
+                  key={index}
+                  className={`min-h-[85px] sm:min-h-[120px] p-1 sm:p-2 border rounded-xl flex flex-col justify-between transition-all relative ${
+                    isCurrentMonth 
+                      ? 'bg-slate-950/40 border-slate-850' 
+                      : 'bg-slate-950/10 border-slate-900/40 opacity-40'
+                  } ${
+                    isToday
+                      ? 'ring-1 ring-indigo-500/80 border-indigo-500/50 bg-indigo-950/10 shadow-md shadow-indigo-950/20'
+                      : 'hover:border-slate-800'
+                  }`}
+                >
+                  {/* Day Number */}
+                  <div className="flex items-center justify-between">
+                    <span className={`text-[10px] sm:text-xs font-bold font-mono ${
+                      isToday ? 'text-indigo-400 font-extrabold' : isCurrentMonth ? 'text-slate-300' : 'text-slate-600'
+                    }`}>
+                      {day}
+                    </span>
+                    {dayAppts.length > 0 && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse sm:hidden" />
+                    )}
+                    {dayAppts.length > 0 && (
+                      <span className="hidden sm:inline text-[9px] px-1.5 py-0.2 bg-slate-900 border border-slate-800 text-slate-400 font-mono font-bold rounded-full">
+                        {dayAppts.length}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Appointments Mini List */}
+                  <div className="flex-1 mt-1 sm:mt-1.5 space-y-1 overflow-y-auto max-h-[50px] sm:max-h-[80px] custom-scrollbar">
+                    {dayAppts.map(appt => {
+                      let badgeColors = 'bg-slate-900/65 border-slate-800 text-slate-300';
+                      if (appt.appointment_type === 'Site Visit') {
+                        badgeColors = 'bg-amber-950/40 border-amber-900/30 text-amber-400';
+                      } else if (appt.appointment_type === 'Payment' || appt.appointment_type === 'Submit Requirement') {
+                        badgeColors = 'bg-emerald-950/40 border-emerald-900/30 text-emerald-400';
+                      } else if (appt.appointment_type === 'Meeting') {
+                        badgeColors = 'bg-indigo-950/40 border-indigo-900/30 text-indigo-400';
+                      } else if (appt.appointment_type === 'Reservation') {
+                        badgeColors = 'bg-purple-950/40 border-purple-900/30 text-purple-400';
+                      }
+
+                      const timeStr = new Date(appt.appointment_time).toLocaleTimeString('en-US', {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true
+                      });
+
+                      const client = clients.find(c => c.id === appt.client_id);
+                      const clientName = client ? `${client.first_name} ${client.last_name}` : 'Unknown';
+
+                      return (
+                        <button
+                          key={appt.id}
+                          type="button"
+                          onClick={() => triggerEdit(appt)}
+                          className={`w-full text-left truncate text-[8px] sm:text-[10px] px-1.5 py-0.5 sm:py-1 rounded border font-sans font-semibold transition-all cursor-pointer block hover:scale-[1.02] active:scale-[0.98] ${badgeColors}`}
+                          title={`${timeStr} • ${appt.appointment_type} with ${clientName}`}
+                        >
+                          <span className="font-mono font-bold opacity-80 mr-1">{timeStr}</span>
+                          <span className="hidden sm:inline font-sans font-medium text-[9px] opacity-90">{appt.appointment_type} • </span>
+                          <span className="font-sans truncate">{clientName}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Lists display table */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+      {viewMode === 'table' && (
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl print:hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
@@ -484,17 +888,17 @@ export function AppointmentsManager({
                             </div>
                           </td>
                           <td className="py-4 px-5">
-                            <span className={`px-2.5 py-1 rounded-xl text-[10px] font-bold uppercase tracking-wider inline-flex items-center gap-1 ${
+                            <span className={`px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-widest inline-flex items-center gap-1.5 shadow-sm ${
                               appt.status === 'Open'
-                                ? 'bg-blue-950/60 border border-blue-900/40 text-blue-400'
+                                ? 'bg-indigo-500/10 border border-indigo-500/30 text-indigo-400'
                                 : appt.status === 'Done'
-                                ? 'bg-emerald-950/60 border border-emerald-900/40 text-emerald-400'
-                                : 'bg-rose-950/65 border border-rose-900/40 text-rose-400'
+                                ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400'
+                                : 'bg-rose-500/10 border border-rose-500/30 text-rose-400'
                             }`}>
-                              <span className={`w-1.5 h-1.5 rounded-full ${
-                                appt.status === 'Open' ? 'bg-blue-400' :
-                                appt.status === 'Done' ? 'bg-emerald-400' :
-                                'bg-rose-400'
+                              <span className={`w-2 h-2 rounded-full animate-pulse ${
+                                appt.status === 'Open' ? 'bg-indigo-400 shadow-[0_0_6px_rgba(99,102,241,0.6)]' :
+                                appt.status === 'Done' ? 'bg-emerald-400 shadow-[0_0_6px_rgba(16,185,129,0.6)]' :
+                                'bg-rose-400 shadow-[0_0_6px_rgba(244,63,94,0.6)]'
                               }`} />
                               {appt.status}
                             </span>
@@ -584,6 +988,7 @@ export function AppointmentsManager({
           );
         })()}
       </div>
+      )}
 
       {/* Book / Edit Appointment Modal */}
       {isCreating && (
@@ -618,8 +1023,32 @@ export function AppointmentsManager({
                 <div className="sm:col-span-2 space-y-2">
                   <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-wider flex items-center justify-between">
                     <span>Select Client (Active Clear Claims Only) *</span>
-                    <span className="text-[9px] text-indigo-400 font-mono">(Role-Based Sorting Loaded)</span>
+                    <span className="text-[9px] text-indigo-400 font-mono">(Role-Based Sorting & Searching Loaded)</span>
                   </label>
+                  
+                  {/* Client search text box */}
+                  <div className="relative">
+                    <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-500">
+                      <Search className="w-3.5 h-3.5" />
+                    </span>
+                    <input
+                      type="text"
+                      placeholder="Type name, ID, or agent ID to filter client drop-down list below..."
+                      value={clientSearch}
+                      onChange={(e) => setClientSearch(e.target.value)}
+                      disabled={editingAppt ? editingAppt.status !== 'Open' : false}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 pl-9 pr-8 text-xs text-slate-200 outline-none focus:border-indigo-500 font-sans"
+                    />
+                    {clientSearch && (
+                      <button
+                        type="button"
+                        onClick={() => setClientSearch('')}
+                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-200 text-xs font-bold"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
                   
                   <select
                     value={selectedClientId}
@@ -629,18 +1058,18 @@ export function AppointmentsManager({
                     className="w-full bg-slate-950 border border-slate-805 rounded-xl py-2 px-3 text-xs text-slate-200 cursor-pointer outline-none focus:border-indigo-500 font-sans font-medium disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     <option value="">-- Choose client --</option>
-                    {sortedMyClients.length > 0 && (
+                    {filteredMyClients.length > 0 && (
                       <optgroup label="My Registered Clients">
-                        {sortedMyClients.map(client => (
+                        {filteredMyClients.map(client => (
                           <option key={client.id} value={client.id}>
                             {client.first_name} {client.middle_name ? client.middle_name + ' ' : ''}{client.last_name} ({client.id}) [Agent/Broker ID: {client.created_by}]
                           </option>
                         ))}
                       </optgroup>
                     )}
-                    {sortedOtherClients.length > 0 && (
+                    {filteredOtherClients.length > 0 && (
                       <optgroup label="Other Corporate Team Clients">
-                        {sortedOtherClients.map(client => {
+                        {filteredOtherClients.map(client => {
                           const owner = profiles.find(p => p.id === client.created_by);
                           const ownerLabel = owner ? `${owner.first_name} ${owner.last_name}` : client.created_by;
                           return (
@@ -651,8 +1080,8 @@ export function AppointmentsManager({
                         })}
                       </optgroup>
                     )}
-                    {eligibleClients.length === 0 && (
-                      <option disabled>No clear-claim clients are available</option>
+                    {filteredMyClients.length === 0 && filteredOtherClients.length === 0 && (
+                      <option disabled>No matching clear-claim clients available</option>
                     )}
                   </select>
                 </div>
@@ -769,6 +1198,135 @@ export function AppointmentsManager({
         onCancel={() => setDialogOpen(false)}
         isDestructive={dialogConfig.isDestructive}
       />
+    </div>
+
+      {/* Professional Printable Summary Report */}
+      <div className="print-only-report bg-white text-slate-900 p-8 font-serif leading-relaxed">
+        <div className="border-b-4 border-slate-900 pb-4 mb-6 flex justify-between items-start">
+          <div>
+            <h1 className="text-xl font-black uppercase tracking-tight font-sans text-slate-900">
+              Aspire88 Estates Corporation
+            </h1>
+            <p className="text-[10px] font-mono text-slate-500 uppercase mt-1">
+              Integrated Enterprise Systems • Scheduling Division
+            </p>
+          </div>
+          <div className="text-right text-[10px] font-mono text-slate-600">
+            <p>Report Ref: SEC-{new Date().getTime().toString().slice(-6)}</p>
+            <p>Generated: {new Date().toLocaleString()}</p>
+          </div>
+        </div>
+
+        <div className="mb-6">
+          <h2 className="text-base font-bold uppercase tracking-wider font-sans text-slate-800">
+            Official Appointments Summary Report
+          </h2>
+          <div className="grid grid-cols-2 gap-4 mt-3 p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs font-sans">
+            <div>
+              <p><strong className="text-slate-700">Requested By:</strong> {currentProfile.first_name} {currentProfile.last_name} ({currentProfile.role})</p>
+              <p><strong className="text-slate-700">Active Timeframe:</strong> {getSelectedTimeframeLabel()}</p>
+            </div>
+            <div>
+              <p><strong className="text-slate-700">Status Filter:</strong> {statusFilter}</p>
+              <p><strong className="text-slate-700">Search Filter:</strong> {searchTerm || 'None'}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Summary Cards */}
+        <div className="grid grid-cols-3 gap-4 mb-6 text-center font-sans">
+          <div className="p-3 border border-slate-200 rounded-lg">
+            <div className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Total Scheduled</div>
+            <div className="text-lg font-bold mt-1 text-slate-800">{visibleAppointments.length}</div>
+          </div>
+          <div className="p-3 border border-slate-200 rounded-lg">
+            <div className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Open Status</div>
+            <div className="text-lg font-bold mt-1 text-indigo-600">
+              {visibleAppointments.filter(a => a.status === 'Open').length}
+            </div>
+          </div>
+          <div className="p-3 border border-slate-200 rounded-lg">
+            <div className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Completed Status</div>
+            <div className="text-lg font-bold mt-1 text-emerald-600">
+              {visibleAppointments.filter(a => a.status === 'Done').length}
+            </div>
+          </div>
+        </div>
+
+        {/* Table */}
+        <table className="w-full text-left text-[10px] border-collapse border border-slate-300 font-sans">
+          <thead>
+            <tr className="bg-slate-100 border-b border-slate-300 text-slate-700 uppercase text-[8px] font-bold tracking-wider">
+              <th className="p-2.5 border-r border-slate-300">APT Ref</th>
+              <th className="p-2.5 border-r border-slate-300">Client Name</th>
+              <th className="p-2.5 border-r border-slate-300">Category & Project</th>
+              <th className="p-2.5 border-r border-slate-300">Date & Time</th>
+              <th className="p-2.5 border-r border-slate-300">Assigned Agent</th>
+              <th className="p-2.5">Status</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-200">
+            {visibleAppointments.map(appt => {
+              const client = clients.find(c => c.id === appt.client_id);
+              const clientName = client ? `${client.first_name} ${client.last_name}` : 'Unknown Client';
+              const proj = projects.find(p => p.id === appt.project_id);
+              const projName = proj ? proj.name : 'Unknown Project';
+              const agent = profiles.find(p => p.id === appt.agent_id);
+              const agentName = agent ? `${agent.first_name} ${agent.last_name}` : 'Unknown';
+              const apptDate = new Date(appt.appointment_time).toLocaleString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              });
+
+              return (
+                <tr key={appt.id} className="text-slate-800">
+                  <td className="p-2.5 border-r border-slate-200 font-mono font-bold">{appt.id}</td>
+                  <td className="p-2.5 border-r border-slate-200 font-medium">{clientName}</td>
+                  <td className="p-2.5 border-r border-slate-200">
+                    <span className="font-semibold text-slate-700">{appt.appointment_type}</span>
+                    {appt.appointment_type === 'Site Visit' && appt.project_id && (
+                      <span className="block text-[8px] text-slate-500">{projName} — {getProjectAddress(appt.project_id)}</span>
+                    )}
+                    {appt.appointment_type !== 'Site Visit' && (
+                      <span className="block text-[8px] text-slate-500">{projName}</span>
+                    )}
+                  </td>
+                  <td className="p-2.5 border-r border-slate-200 font-medium">{apptDate}</td>
+                  <td className="p-2.5 border-r border-slate-200">{agentName}</td>
+                  <td className={`p-2.5 font-bold ${appt.status === 'Open' ? 'text-indigo-600' : appt.status === 'Done' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                    {appt.status}
+                  </td>
+                </tr>
+              );
+            })}
+            {visibleAppointments.length === 0 && (
+              <tr>
+                <td colSpan={6} className="p-6 text-center text-slate-400 italic font-sans">
+                  No records match the current filter criteria.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+
+        {/* Footer Sign-off */}
+        <div className="mt-10 pt-6 border-t border-slate-200 grid grid-cols-2 gap-8 text-xs font-sans">
+          <div>
+            <p className="italic text-slate-500 text-[10px]">
+              This document represents an official administrative report of Aspire88 Estates Corporation. All entries are subject to corporate compliance rules and regulations.
+            </p>
+          </div>
+          <div className="flex flex-col items-end justify-end">
+            <div className="border-t border-slate-400 w-48 pt-1 text-center mt-4">
+              <p className="font-bold text-slate-700">{currentProfile.first_name} {currentProfile.last_name}</p>
+              <p className="text-[9px] text-slate-500 uppercase">{currentProfile.role}</p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
