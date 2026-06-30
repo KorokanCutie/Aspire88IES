@@ -28,10 +28,10 @@ const DEFAULT_PROPERTIES: AppPropertiesType = {
   enableQuickTestingAccounts: false, // Set to false for pure production
 
   // 2. Environment Mode: 'production' | 'sandbox'
-  mode: 'sandbox',
+  mode: 'production',
 
   // 3. Database Selection: false (Live Supabase Production DB) | true (Test DB / Offline Sandbox)
-  useTestDatabase: true, 
+  useTestDatabase: false, 
   testDatabaseConfig: {
     supabaseUrl: 'https://wfahmglysivxwxdflvoj.supabase.co',
     supabaseAnonKey: 'sb_publishable_lbh5dxjXNnpfaA69SjoOnQ_0czrHOyT',
