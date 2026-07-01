@@ -211,10 +211,7 @@ export function LoginForm({ onLoginSuccess, profiles }: LoginFormProps) {
       <div className="absolute bottom-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-3xl" />
 
       {/* Brand logo headers */}
-      <div className="flex items-center gap-2 mb-6">
-        <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-slate-950 font-black text-sm tracking-tighter shadow-lg shadow-emerald-500/10">
-          A88
-        </div>
+      <div className="mb-6">
         <div>
           <h1 className="text-sm font-black text-slate-100 tracking-wider uppercase">Aspire88 Estates Corporation Integrated Enterprise System</h1>
           <p className="text-[10px] text-slate-500 uppercase tracking-widest font-mono font-bold">Brokerage Management System</p>
@@ -417,10 +414,7 @@ export function LoginForm({ onLoginSuccess, profiles }: LoginFormProps) {
                 <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 via-teal-500 to-purple-600" />
                 
                 {/* Email Header */}
-                <div className="flex items-center gap-2 border-b border-slate-800/50 pb-4">
-                  <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-slate-950 font-black text-xs">
-                    A88
-                  </div>
+                <div className="border-b border-slate-800/50 pb-4">
                   <div>
                     <h4 className="text-xs font-black text-slate-100 uppercase tracking-widest">Aspire88 Estates Corporation Integrated Enterprise System</h4>
                     <p className="text-[8px] text-slate-500 font-mono font-bold uppercase tracking-widest">Portal Delivery Agent</p>
