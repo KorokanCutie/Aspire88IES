@@ -16,9 +16,9 @@ async function startServer() {
   // API endpoint for sending emails
   app.post('/api/send-email', async (req: express.Request, res: express.Response) => {
     const { to, subject, html } = req.body;
-    const apiKey = 're_L7NFSFZa_MmvdDhGJb1daavhtKo7cTanA';
-    const primaryFrom = 'admin@aspire88.netlify.app';
-    const fallbackFrom = 'admin@aspire88.netlify.app <onboarding@resend.dev>';
+    const apiKey = process.env.RESEND_API_KEY || 're_YamVe4r5_NDpkqNrxDJp7wkzGpwRd5Eef';
+    const primaryFrom = 'admin@aspire88ies.netlify.app';
+    const fallbackFrom = 'admin@aspire88ies.netlify.app <onboarding@resend.dev>';
 
     console.log('[Server Resend Proxy] Processing message routing...');
 
