@@ -1,9 +1,9 @@
 @import "tailwindcss";
 
-/* High contrast light mode overrides */
+/* Elegant and professional modern light mode overrides */
 .theme-light {
   background-color: #f8fafc !important;
-  color: #000000 !important;
+  color: #0f172a !important;
 }
 
 .theme-light header,
@@ -11,19 +11,21 @@
 .theme-light .bg-slate-900,
 .theme-light .bg-slate-950,
 .theme-light .bg-slate-900\/45,
+.theme-light .bg-slate-900\/90,
 .theme-light .bg-slate-900\/80,
 .theme-light .bg-slate-950\/30,
 .theme-light .bg-slate-950\/40,
 .theme-light .bg-slate-950\/80 {
   background-color: #ffffff !important;
-  color: #000000 !important;
-  border-color: #000000 !important;
+  color: #0f172a !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -2px rgba(0, 0, 0, 0.02) !important;
 }
 
 .theme-light td,
 .theme-light th,
 .theme-light tr,
-.theme-light border-slate-800,
+.theme-light .border-slate-800,
 .theme-light .border-slate-800\/60,
 .theme-light .border-slate-800\/80,
 .theme-light .border-slate-800\/90,
@@ -31,23 +33,40 @@
 .theme-light .border-slate-850,
 .theme-light .border-slate-850\/40,
 .theme-light .border-slate-800 {
-  border-color: #000000 !important;
+  border-color: #e2e8f0 !important;
+}
+
+.theme-light th {
+  background-color: #f1f5f9 !important;
+  color: #475569 !important;
+}
+
+.theme-light tr:hover {
+  background-color: #f8fafc !important;
 }
 
 .theme-light input,
 .theme-light select,
 .theme-light textarea {
   background-color: #ffffff !important;
-  color: #000000 !important;
-  border: 2px solid #000000 !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 0.75rem !important;
+}
+
+.theme-light input:focus,
+.theme-light select:focus,
+.theme-light textarea:focus {
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 1px #6366f1 !important;
 }
 
 .theme-light button {
-  border-color: #000000 !important;
+  border-color: #cbd5e1 !important;
 }
 
 .theme-light button:hover {
-  background-color: #f1f5f9 !important;
+  background-color: #f8fafc !important;
 }
 
 .theme-light .text-slate-100,
@@ -56,51 +75,80 @@
 .theme-light .text-slate-205,
 .theme-light .text-slate-400,
 .theme-light .text-slate-500 {
-  color: #000000 !important;
+  color: #1e293b !important;
 }
 
 .theme-light .text-slate-400 {
-  color: #334155 !important;
+  color: #475569 !important;
 }
 
 .theme-light .text-slate-500 {
-  color: #475569 !important;
+  color: #64748b !important;
 }
 
 .theme-light .text-indigo-400 {
   color: #4f46e5 !important;
-  font-weight: 700 !important;
+  font-weight: 600 !important;
 }
 
 .theme-light .text-emerald-400 {
   color: #15803d !important;
 }
 
+.theme-light .text-rose-400 {
+  color: #b91c1c !important;
+}
+
 .theme-light .bg-emerald-950,
 .theme-light .bg-emerald-950\/80 {
   background-color: #dcfce7 !important;
   color: #14532d !important;
-  border-color: #166534 !important;
+  border-color: #bbf7d0 !important;
 }
 
-.theme-light .bg-blue-950\/60 {
-  background-color: #dbeafe !important;
-  color: #1e3a8a !important;
-  border-color: #1e40af !important;
+.theme-light .bg-blue-950\/60,
+.theme-light .bg-indigo-950,
+.theme-light .bg-indigo-950\/80 {
+  background-color: #eef2ff !important;
+  color: #312e81 !important;
+  border-color: #e0e7ff !important;
+}
+
+.theme-light .bg-amber-950,
+.theme-light .bg-amber-950\/80 {
+  background-color: #fef3c7 !important;
+  color: #78350f !important;
+  border-color: #fde68a !important;
+}
+
+.theme-light .bg-rose-950,
+.theme-light .bg-rose-950\/40,
+.theme-light .bg-rose-950\/20 {
+  background-color: #fee2e2 !important;
+  color: #991b1b !important;
+  border-color: #fecaca !important;
 }
 
 .theme-light .bg-slate-950\/20:hover,
 .theme-light .hover\:bg-slate-950\/20:hover {
-  background-color: #e2e8f0 !important;
+  background-color: #f1f5f9 !important;
+}
+
+.theme-light .recharts-default-tooltip {
+  background-color: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #0f172a !important;
+  border-radius: 0.5rem !important;
 }
 
 /* Professional Print Stylesheet */
 @media print {
-  html, body, #root, .min-h-screen, .flex-1, .flex, main {
+  /* Force light backgrounds and high-contrast dark text during print, regardless of dark mode settings */
+  html, body, #root, .min-h-screen, .flex-1, .flex, main, .theme-light, .theme-dark {
     background: #ffffff !important;
     background-color: #ffffff !important;
     color: #000000 !important;
-    font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif !important;
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
     font-size: 11pt !important;
     display: block !important;
     position: static !important;
@@ -109,12 +157,22 @@
     min-height: auto !important;
   }
 
-  header, aside, footer, nav, button, input, select, .print-hidden, .no-print {
+  /* Override any Tailwind overflow-hidden or absolute height constraints which break page flow */
+  *, .overflow-hidden, .overflow-y-auto, .overflow-x-auto, .flex-1 {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  /* Hide headers, sidebar navigation, buttons, inputs, modals and all elements designated as print-hidden */
+  header, aside, footer, nav, button, input, select, textarea, .print-hidden, .no-print, [role="dialog"], .fixed {
     display: none !important;
   }
 
+  /* Beautifully position and format the printable report to take the entire page space */
   .print-only-report {
     display: block !important;
+    visibility: visible !important;
     position: absolute !important;
     left: 0 !important;
     top: 0 !important;
@@ -127,7 +185,34 @@
     z-index: 9999999 !important;
   }
 
-  /* Force background printing for badges/tables */
+  .print-only-report * {
+    visibility: visible !important;
+    color: #000000 !important;
+  }
+
+  /* Make sure tables have clear boundaries in the printout */
+  .print-only-report table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin-top: 15px !important;
+  }
+
+  .print-only-report th,
+  .print-only-report td {
+    border: 1px solid #94a3b8 !important;
+    padding: 8px !important;
+    text-align: left !important;
+    color: #0f172a !important;
+  }
+
+  .print-only-report th {
+    background-color: #f1f5f9 !important;
+    font-weight: bold !important;
+    text-transform: uppercase !important;
+    font-size: 9pt !important;
+  }
+
+  /* Force browsers to print backgrounds if enabled by the user */
   * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;

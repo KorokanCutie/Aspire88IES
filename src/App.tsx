@@ -417,13 +417,15 @@ function DashboardShell() {
   // If loading...
   if (currentUser === null) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-4">
+      <div className={`min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-4 ${theme === 'light' ? 'theme-light' : 'theme-dark'}`}>
         {/* Absolute Background Mesh */}
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#020617_1px,transparent_1px),linear-gradient(to_bottom,#020617_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-30 pointer-events-none" />
         
         <LoginForm
           onLoginSuccess={handleLoginSuccess}
           profiles={profiles}
+          theme={theme}
+          toggleTheme={toggleTheme}
         />
 
 
@@ -434,7 +436,7 @@ function DashboardShell() {
   // FORCE CHANGE PASSWORD INTERCEPT
   if (currentUser.is_temporary) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-4">
+      <div className={`min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-4 ${theme === 'light' ? 'theme-light' : 'theme-dark'}`}>
         <ForcePasswordChange
           currentProfile={currentUser}
           onPasswordChanged={handlePasswordChanged}
@@ -761,29 +763,29 @@ function DashboardShell() {
                   </div>
 
                   {/* Date Range Picker Component */}
-                  <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block sm:inline shrink-0">
+                  <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 shadow-xl">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full lg:w-auto">
+                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block shrink-0">
                         Workstation Timeframe Filter:
                       </span>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
                         <input
                           type="date"
                           value={overviewStartDate}
                           onChange={(e) => setOverviewStartDate(e.target.value)}
-                          className="bg-slate-950 border border-slate-800 rounded-lg py-1.5 px-2.5 text-xs text-slate-300 outline-none focus:border-indigo-500 font-sans cursor-pointer"
+                          className="bg-slate-950 border border-slate-800 rounded-lg py-1.5 px-2.5 text-xs text-slate-300 outline-none focus:border-indigo-500 font-sans cursor-pointer flex-1 sm:flex-initial min-w-[110px]"
                         />
-                        <span className="text-slate-500 text-xs">to</span>
+                        <span className="text-slate-500 text-xs shrink-0">to</span>
                         <input
                           type="date"
                           value={overviewEndDate}
                           onChange={(e) => setOverviewEndDate(e.target.value)}
-                          className="bg-slate-950 border border-slate-800 rounded-lg py-1.5 px-2.5 text-xs text-slate-300 outline-none focus:border-indigo-500 font-sans cursor-pointer"
+                          className="bg-slate-950 border border-slate-800 rounded-lg py-1.5 px-2.5 text-xs text-slate-300 outline-none focus:border-indigo-500 font-sans cursor-pointer flex-1 sm:flex-initial min-w-[110px]"
                         />
                       </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-1.5">
+                    <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-1.5 w-full lg:w-auto">
                       <button
                         type="button"
                         onClick={() => {
@@ -791,7 +793,7 @@ function DashboardShell() {
                           setOverviewStartDate(todayStr);
                           setOverviewEndDate(todayStr);
                         }}
-                        className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all duration-200 cursor-pointer ${
+                        className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all duration-200 cursor-pointer text-center ${
                           isTodayActive
                             ? 'bg-indigo-600 border border-indigo-500 text-white shadow-sm shadow-indigo-950/20'
                             : 'bg-slate-950 hover:bg-slate-800 border border-slate-850 text-slate-300'
@@ -807,7 +809,7 @@ function DashboardShell() {
                           setOverviewStartDate(start.toISOString().split('T')[0]);
                           setOverviewEndDate(new Date().toISOString().split('T')[0]);
                         }}
-                        className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all duration-200 cursor-pointer ${
+                        className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all duration-200 cursor-pointer text-center ${
                           isPast7Active
                             ? 'bg-indigo-600 border border-indigo-500 text-white shadow-sm shadow-indigo-950/20'
                             : 'bg-slate-950 hover:bg-slate-800 border border-slate-850 text-slate-300'
@@ -823,7 +825,7 @@ function DashboardShell() {
                           setOverviewStartDate(firstDay.toISOString().split('T')[0]);
                           setOverviewEndDate(lastDay.toISOString().split('T')[0]);
                         }}
-                        className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all duration-200 cursor-pointer ${
+                        className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all duration-200 cursor-pointer text-center ${
                           isThisMonthActive
                             ? 'bg-indigo-600 border border-indigo-500 text-white shadow-sm shadow-indigo-950/20'
                             : 'bg-slate-950 hover:bg-slate-800 border border-slate-850 text-slate-300'
@@ -839,7 +841,7 @@ function DashboardShell() {
                           setOverviewStartDate(start.toISOString().split('T')[0]);
                           setOverviewEndDate(new Date().toISOString().split('T')[0]);
                         }}
-                        className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all duration-200 cursor-pointer ${
+                        className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all duration-200 cursor-pointer text-center ${
                           isPast30Active
                             ? 'bg-indigo-600 border border-indigo-500 text-white shadow-sm shadow-indigo-950/20'
                             : 'bg-slate-950 hover:bg-slate-800 border border-slate-850 text-slate-300'
@@ -853,7 +855,7 @@ function DashboardShell() {
                           setOverviewStartDate('');
                           setOverviewEndDate('');
                         }}
-                        className="px-2.5 py-1.5 bg-rose-950/40 hover:bg-rose-950/60 border border-rose-900/30 text-rose-400 rounded-lg text-[11px] font-bold transition-colors cursor-pointer"
+                        className="col-span-2 sm:col-span-1 px-2.5 py-1.5 bg-rose-950/40 hover:bg-rose-950/60 border border-rose-900/30 text-rose-400 rounded-lg text-[11px] font-bold transition-colors cursor-pointer text-center"
                       >
                         Clear
                       </button>
