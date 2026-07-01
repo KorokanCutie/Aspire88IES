@@ -53,7 +53,25 @@ function DashboardShell() {
   const [refreshKey, setRefreshKey] = useState(0);
   
   // Auth Session Variables
-  const [currentUser, setCurrentUser] = useState<Profile | null>(null);
+  const [currentUser, setCurrentUser] = useState<Profile | null>(() => {
+    const remembered = localStorage.getItem('aspire88_remembered_session');
+    if (remembered) {
+      try {
+        return JSON.parse(remembered);
+      } catch (e) {
+        return null;
+      }
+    }
+    const session = sessionStorage.getItem('aspire88_active_session');
+    if (session) {
+      try {
+        return JSON.parse(session);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  });
   
   // Database Tables Lists
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -168,8 +186,7 @@ function DashboardShell() {
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 32px 24px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff; color: #334155; line-height: 1.6; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
             <!-- Brand Header -->
             <div style="border-bottom: 2px solid #6366f1; padding-bottom: 16px; margin-bottom: 24px; text-align: left;">
-              <h2 style="margin: 0; color: #0f172a; font-size: 22px; font-weight: 800; letter-spacing: -0.025em;">ASPIRE88 ESTATES CORPORATION INTEGRATED ENTERPRISE SYSTEM</h2>
-              <span style="font-size: 11px; color: #4f46e5; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;">Integrated Enterprise System</span>
+              <h2 style="margin: 0; color: #0f172a; font-size: 22px; font-weight: 800; letter-spacing: -0.025em;">ASPIRE88 ESTATES CORPORATION IES</h2>
             </div>
 
             <!-- Main Content -->
@@ -221,15 +238,15 @@ function DashboardShell() {
             </p>
 
             <div style="text-align: center; margin-bottom: 28px;">
-              <a href="https://aspire88.netlify.app" style="background-color: #4f46e5; color: #ffffff; padding: 12px 24px; font-size: 14px; font-weight: 600; text-decoration: none; border-radius: 8px; display: inline-block;">
+              <a href="https://aspire88ies.netlify.app" style="background-color: #4f46e5; color: #ffffff; padding: 12px 24px; font-size: 14px; font-weight: 600; text-decoration: none; border-radius: 8px; display: inline-block;">
                 Access ERP Portal
               </a>
             </div>
 
             <!-- Footer -->
             <div style="border-top: 1px solid #e2e8f0; padding-top: 16px; text-align: center; font-size: 12px; color: #94a3b8;">
-              <p style="margin: 0 0 4px 0;">This is an automated operational alert from the Aspire88 Estates Corporation Integrated Enterprise System schedule tracker.</p>
-              <p style="margin: 0;">&copy; 2026 Aspire88 Estates Corporation Integrated Enterprise System. All rights reserved.</p>
+              <p style="margin: 0 0 4px 0;">This is an automated operational alert from the Aspire88 Estates Corporation IES</p>
+              <p style="margin: 0;">&copy; 2026 Aspire88 Estates Corporation IES. All rights reserved.</p>
             </div>
           </div>
         `;
@@ -277,6 +294,8 @@ function DashboardShell() {
         if (!activeCurrent.is_active) {
           toast('Authentication Failure: This account has been deactivated by administration.', 'error');
           setCurrentUser(null);
+          localStorage.removeItem('aspire88_remembered_session');
+          sessionStorage.removeItem('aspire88_active_session');
         } else {
           // Sync current profile changes immediately if any field differs to avoid infinite loop
           if (
@@ -294,6 +313,11 @@ function DashboardShell() {
             activeCurrent.role !== currentUser.role
           ) {
             setCurrentUser(activeCurrent);
+            if (localStorage.getItem('aspire88_remembered_session')) {
+              localStorage.setItem('aspire88_remembered_session', JSON.stringify(activeCurrent));
+            } else if (sessionStorage.getItem('aspire88_active_session')) {
+              sessionStorage.setItem('aspire88_active_session', JSON.stringify(activeCurrent));
+            }
           }
         }
       }
@@ -308,14 +332,29 @@ function DashboardShell() {
     return () => clearInterval(interval);
   }, [currentUser]);
 
-  const handleLoginSuccess = (profile: Profile) => {
+  const handleLoginSuccess = (profile: Profile, remember: boolean) => {
     setCurrentUser(profile);
+    if (remember) {
+      localStorage.setItem('aspire88_remembered_session', JSON.stringify(profile));
+      localStorage.setItem('aspire88_remember_me_checked', 'true');
+      localStorage.setItem('aspire88_remembered_email', profile.email);
+    } else {
+      sessionStorage.setItem('aspire88_active_session', JSON.stringify(profile));
+      localStorage.removeItem('aspire88_remembered_session');
+      localStorage.setItem('aspire88_remember_me_checked', 'false');
+      localStorage.removeItem('aspire88_remembered_email');
+    }
     reloadData();
     toast(`Authenticated as ${profile.first_name} ${profile.last_name} (${profile.role}).`, 'success');
   };
 
   const handlePasswordChanged = (updatedProfile: Profile) => {
     setCurrentUser(updatedProfile);
+    if (localStorage.getItem('aspire88_remembered_session')) {
+      localStorage.setItem('aspire88_remembered_session', JSON.stringify(updatedProfile));
+    } else {
+      sessionStorage.setItem('aspire88_active_session', JSON.stringify(updatedProfile));
+    }
     reloadData();
   };
 
@@ -328,6 +367,8 @@ function DashboardShell() {
         setMobileMenuOpen(false);
         setCurrentUser(null);
         setActiveTab('Overview');
+        localStorage.removeItem('aspire88_remembered_session');
+        sessionStorage.removeItem('aspire88_active_session');
         toast('Identity segment successfully decommissioned.', 'info');
       }
     });
@@ -513,17 +554,15 @@ function DashboardShell() {
           </div>
           <div>
             <h1 className="text-sm font-bold tracking-tight text-slate-100 flex items-center gap-1.5 leading-none">
-              Aspire88 Estates Corporation Integrated Enterprise System
-              <span className="text-[9px] font-sans px-1.5 py-0.5 rounded bg-emerald-950/80 text-emerald-400 border border-emerald-800/60 font-semibold uppercase scale-90">
-                Integrated Enterprise
-              </span>
+              <span className="hidden sm:inline">Aspire88 Estates Corporation IES</span>
+              <span className="inline sm:hidden">Aspire88 IES</span>
               {AppProperties.useTestDatabase && (
-                <span className="text-[8px] font-sans px-1.5 py-0.5 rounded bg-amber-950/80 text-amber-400 border border-amber-800/60 font-bold uppercase tracking-wide">
+                <span className="hidden md:inline-flex text-[8px] font-sans px-1.5 py-0.5 rounded bg-amber-950/80 text-amber-400 border border-amber-800/60 font-bold uppercase tracking-wide shrink-0">
                   Test DB
                 </span>
               )}
               {AppProperties.mode === 'sandbox' && (
-                <span className="text-[8px] font-sans px-1.5 py-0.5 rounded bg-indigo-950/80 text-indigo-400 border border-indigo-800/60 font-bold uppercase tracking-wide">
+                <span className="hidden md:inline-flex text-[8px] font-sans px-1.5 py-0.5 rounded bg-indigo-950/80 text-indigo-400 border border-indigo-800/60 font-bold uppercase tracking-wide shrink-0">
                   Sandbox
                 </span>
               )}
@@ -568,16 +607,21 @@ function DashboardShell() {
         </div>
 
         {/* Mobile menu toggle */}
-        <div className="flex items-center gap-4 lg:hidden">
-          <PstClock />
-          {/* Mobile Theme switcher */}
-          <button
-            onClick={toggleTheme}
-            className="p-2 bg-slate-950 border border-slate-805 text-indigo-400 hover:text-indigo-300 rounded-xl transition-all cursor-pointer"
-            title="Toggle high-contrast light mode"
-          >
-            {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-          </button>
+        <div className="flex items-center gap-3 lg:hidden">
+          {/* Running Clock - hidden on mobile phone screens (< 768px), visible on tablets */}
+          <div className="hidden md:block shrink-0">
+            <PstClock />
+          </div>
+          {/* Mobile Theme switcher - hidden on mobile phone screens (< 768px), visible on tablets */}
+          <div className="hidden md:block shrink-0">
+            <button
+              onClick={toggleTheme}
+              className="p-2 bg-slate-950 border border-slate-805 text-indigo-400 hover:text-indigo-300 rounded-xl transition-all cursor-pointer"
+              title="Toggle high-contrast light mode"
+            >
+              {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
+          </div>
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="p-2 bg-slate-950 border border-slate-805 text-slate-300 hover:text-slate-100 rounded-xl transition-all cursor-pointer"
@@ -617,10 +661,19 @@ function DashboardShell() {
             })}
           </div>
 
-          <div className="border-t border-slate-850 pt-4 flex flex-col gap-3">
+          <div className="border-t border-slate-850 pt-4 flex flex-col sm:flex-row gap-3">
+            {/* Always accessible Theme toggle inside mobile slideout */}
+            <button
+              type="button"
+              onClick={() => toggleTheme()}
+              className="flex-1 flex items-center justify-center gap-2.5 p-3 bg-slate-950 hover:bg-slate-900 text-indigo-400 border border-slate-800 rounded-xl text-xs font-bold uppercase transition-all cursor-pointer"
+            >
+              {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              {theme === 'dark' ? 'Light Theme' : 'Dark Theme'}
+            </button>
             <button
               onClick={handleLogout}
-              className="w-full flex items-center justify-center gap-2 p-3 bg-rose-950/20 border border-rose-900/30 text-rose-400 hover:bg-rose-950/50 font-bold rounded-xl text-xs uppercase"
+              className="flex-1 flex items-center justify-center gap-2 p-3 bg-rose-950/20 border border-rose-900/30 text-rose-400 hover:bg-rose-950/50 font-bold rounded-xl text-xs uppercase"
             >
               <LogOut className="w-4 h-4" />
               Deauthorize workstation
@@ -702,7 +755,7 @@ function DashboardShell() {
                         Welcome, {currentUser.first_name} {currentUser.last_name}
                       </h2>
                       <p className="text-xs text-slate-400 leading-relaxed mt-2.5">
-                        Aspire88 Estates Corporation Integrated Enterprise System segment. Managing {currentUser.role === 'Admin' ? 'all administrative clusters and duplicate dispute records.' : currentUser.role === 'Broker' ? 'downline sales listings and client identity channels.' : currentUser.role === 'Agent' ? 'property scheduling coordinates.' : 'read-only directory lists.'} Access keys are restricted dynamically by Postgres Row Level Security.
+                        Aspire88 Estates Corporation IES segment. Managing {currentUser.role === 'Admin' ? 'all administrative clusters and duplicate dispute records.' : currentUser.role === 'Broker' ? 'downline sales listings and client identity channels.' : currentUser.role === 'Agent' ? 'property scheduling coordinates.' : 'read-only directory lists.'} Access keys are restricted dynamically by Postgres Row Level Security.
                       </p>
                     </div>
                   </div>

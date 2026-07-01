@@ -7,7 +7,7 @@ import { AppProperties } from './appProperties';
 const INITIAL_PROFILES: Profile[] = [
   {
     id: 'AD-SEED9000',
-    email: 'admin@aspire88.netlify.app',
+    email: 'admin@aspire88ies.netlify.app',
     first_name: 'Super',
     last_name: 'Admin',
     role: 'Admin',
@@ -19,7 +19,7 @@ const INITIAL_PROFILES: Profile[] = [
   },
   {
     id: 'BR-ROXA5678',
-    email: 'broker.roxas@aspire88.netlify.app',
+    email: 'broker.roxas@aspire88ies.netlify.app',
     first_name: 'Vicente',
     last_name: 'Roxas',
     role: 'Broker',
@@ -30,7 +30,7 @@ const INITIAL_PROFILES: Profile[] = [
   },
   {
     id: 'AG-MARI1234',
-    email: 'agent.maria@aspire88.netlify.app',
+    email: 'agent.maria@aspire88ies.netlify.app',
     first_name: 'Maria',
     last_name: 'Clara',
     role: 'Agent',
@@ -42,7 +42,7 @@ const INITIAL_PROFILES: Profile[] = [
   },
   {
     id: 'AG-RIZA9012',
-    email: 'agent.jose@aspire88.netlify.app',
+    email: 'agent.jose@aspire88ies.netlify.app',
     first_name: 'Jose',
     last_name: 'Rizal',
     role: 'Agent',
@@ -54,7 +54,7 @@ const INITIAL_PROFILES: Profile[] = [
   },
   {
     id: 'TR-MAGB3456',
-    email: 'treasurer.teresa@aspire88.netlify.app',
+    email: 'treasurer.teresa@aspire88ies.netlify.app',
     first_name: 'Teresa',
     last_name: 'Magbanua',
     role: 'Treasurer',
@@ -718,7 +718,7 @@ class ERPDatabase {
         const challengedClientName = `${client.first_name} ${client.last_name}`;
 
         // Send email to admin when a duplicate conflict entry is created
-        sendEmail('admin@aspire88.netlify.app', `[System Alert] Duplicate Client Conflict Registered - Reference: ${conflictId}`, `
+        sendEmail('admin@aspire88ies.netlify.app', `[System Alert] Duplicate Client Conflict Registered - Reference: ${conflictId}`, `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 32px 24px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff; color: #334155; line-height: 1.6; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
             <!-- Brand Header -->
             <div style="border-bottom: 2px solid #6366f1; padding-bottom: 16px; margin-bottom: 24px; text-align: left;">
@@ -771,7 +771,7 @@ class ERPDatabase {
             </p>
 
             <div style="text-align: center; margin-bottom: 28px;">
-              <a href="https://aspire88.netlify.app" style="background-color: #4f46e5; color: #ffffff; padding: 12px 24px; font-size: 14px; font-weight: 600; text-decoration: none; border-radius: 8px; display: inline-block;">
+              <a href="https://aspire88ies.netlify.app" style="background-color: #4f46e5; color: #ffffff; padding: 12px 24px; font-size: 14px; font-weight: 600; text-decoration: none; border-radius: 8px; display: inline-block;">
                 Access Resolution Workstation
               </a>
             </div>

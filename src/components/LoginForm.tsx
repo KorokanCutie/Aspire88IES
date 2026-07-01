@@ -7,14 +7,19 @@ import { supabase } from '../supabaseClient';
 import { AppProperties } from '../appProperties';
 
 interface LoginFormProps {
-  onLoginSuccess: (profile: Profile) => void;
+  onLoginSuccess: (profile: Profile, rememberMe: boolean) => void;
   profiles: Profile[];
 }
 
 export function LoginForm({ onLoginSuccess, profiles }: LoginFormProps) {
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(() => {
+    return localStorage.getItem('aspire88_remembered_email') || '';
+  });
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [rememberMe, setRememberMe] = useState(() => {
+    return localStorage.getItem('aspire88_remember_me_checked') === 'true';
+  });
   const [showQuickAccounts, setShowQuickAccounts] = useState(AppProperties.enableQuickTestingAccounts);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -71,7 +76,7 @@ export function LoginForm({ onLoginSuccess, profiles }: LoginFormProps) {
         });
 
         if (!authErr && authData?.user) {
-          onLoginSuccess(found);
+          onLoginSuccess(found, rememberMe);
           return;
         }
       } catch (authErr: any) {
@@ -105,7 +110,7 @@ export function LoginForm({ onLoginSuccess, profiles }: LoginFormProps) {
         console.warn('Supabase Auth registration check skipped:', authErr);
       }
 
-      onLoginSuccess(found);
+      onLoginSuccess(found, rememberMe);
     } catch (err: any) {
       setError(err.message || 'An error occurred during portal authentication.');
     }
@@ -213,8 +218,8 @@ export function LoginForm({ onLoginSuccess, profiles }: LoginFormProps) {
       {/* Brand logo headers */}
       <div className="mb-6">
         <div>
-          <h1 className="text-sm font-black text-slate-100 tracking-wider uppercase">Aspire88 Estates Corporation Integrated Enterprise System</h1>
-          <p className="text-[10px] text-slate-500 uppercase tracking-widest font-mono font-bold">Brokerage Management System</p>
+          <h1 className="text-sm font-black text-slate-100 tracking-wider uppercase">Aspire88 Estates Corporation IES</h1>
+          <p className="text-[10px] text-slate-500 uppercase tracking-widest font-mono font-bold">Integrated Enterprise System</p>
         </div>
       </div>
 
@@ -273,6 +278,24 @@ export function LoginForm({ onLoginSuccess, profiles }: LoginFormProps) {
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+            </div>
+
+            {/* Remember Me Checkbox */}
+            <div className="flex items-center pb-1">
+              <label className="flex items-center gap-2.5 cursor-pointer group select-none">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-4 h-4 rounded border border-slate-800 bg-slate-950 flex items-center justify-center text-slate-950 peer-checked:bg-indigo-600 peer-checked:border-indigo-600 peer-checked:text-slate-100 transition-all duration-150">
+                  <Check className="w-3 h-3 stroke-[3.5]" />
+                </div>
+                <span className="text-xs font-semibold text-slate-400 group-hover:text-slate-300 transition-colors">
+                  Remember Me
+                </span>
+              </label>
             </div>
 
             {error && (

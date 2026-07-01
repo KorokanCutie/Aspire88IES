@@ -14,8 +14,8 @@ export const handler: Handler = async (event, context) => {
     
     // Fallback to local key if process.env.RESEND_API_KEY is not configured
     const apiKey = process.env.RESEND_API_KEY || 're_YamVe4r5_NDpkqNrxDJp7wkzGpwRd5Eef';
-    const primaryFrom = 'admin@aspire88.netlify.app';
-    const fallbackFrom = 'admin@aspire88.netlify.app <onboarding@resend.dev>';
+    const primaryFrom = 'admin@aspire88ies.netlify.app';
+    const fallbackFrom = 'admin@aspire88ies.netlify.app <onboarding@resend.dev>';
 
     console.log('[Netlify Function Resend] Processing message routing...');
 

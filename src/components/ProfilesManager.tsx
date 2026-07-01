@@ -217,7 +217,7 @@ export function ProfilesManager({ currentProfile, profiles, onRefresh }: Profile
               </p>
 
               <div style="text-align: center; margin-bottom: 28px;">
-                <a href="https://aspire88.netlify.app" style="background-color: #4f46e5; color: #ffffff; padding: 12px 24px; font-size: 14px; font-weight: 600; text-decoration: none; border-radius: 8px; display: inline-block;">
+                <a href="https://aspire88ies.netlify.app" style="background-color: #4f46e5; color: #ffffff; padding: 12px 24px; font-size: 14px; font-weight: 600; text-decoration: none; border-radius: 8px; display: inline-block;">
                   Log In to Dashboard
                 </a>
               </div>
@@ -400,7 +400,7 @@ export function ProfilesManager({ currentProfile, profiles, onRefresh }: Profile
         </p>
 
         <div style="text-align: center; margin-bottom: 28px;">
-          <a href="https://aspire88.netlify.app" style="background-color: #4f46e5; color: #ffffff; padding: 12px 24px; font-size: 14px; font-weight: 600; text-decoration: none; border-radius: 8px; display: inline-block;">
+          <a href="https://aspire88ies.netlify.app" style="background-color: #4f46e5; color: #ffffff; padding: 12px 24px; font-size: 14px; font-weight: 600; text-decoration: none; border-radius: 8px; display: inline-block;">
             Access ERP Portal
           </a>
         </div>
@@ -896,7 +896,7 @@ export function ProfilesManager({ currentProfile, profiles, onRefresh }: Profile
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    placeholder="juan.delacruz@aspire88.netlify.app"
+                    placeholder="juan.delacruz@aspire88ies.netlify.app"
                     className="mt-1.5 w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-200 outline-none focus:border-indigo-500 transition-all font-sans"
                   />
                 </div>
