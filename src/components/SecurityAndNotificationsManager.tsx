@@ -51,7 +51,9 @@ export function SecurityAndNotificationsManager({ currentProfile, onRefresh }: S
     }
 
     // 1. Verify current password
-    const activeHash = currentProfile.password || currentProfile.temp_password || '';
+    const activeHash = (currentProfile.is_temporary && currentProfile.temp_password)
+      ? currentProfile.temp_password
+      : (currentProfile.password || currentProfile.temp_password || '');
     let isCurrentMatch = false;
 
     if (activeHash.startsWith('$2a$') || activeHash.startsWith('$2b$')) {

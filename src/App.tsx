@@ -417,13 +417,15 @@ function DashboardShell() {
   // If loading...
   if (currentUser === null) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-4">
+      <div className={`min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-4 ${theme === 'light' ? 'theme-light' : 'theme-dark'}`}>
         {/* Absolute Background Mesh */}
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#020617_1px,transparent_1px),linear-gradient(to_bottom,#020617_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-30 pointer-events-none" />
         
         <LoginForm
           onLoginSuccess={handleLoginSuccess}
           profiles={profiles}
+          theme={theme}
+          toggleTheme={toggleTheme}
         />
 
 
@@ -434,7 +436,7 @@ function DashboardShell() {
   // FORCE CHANGE PASSWORD INTERCEPT
   if (currentUser.is_temporary) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-4">
+      <div className={`min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-4 ${theme === 'light' ? 'theme-light' : 'theme-dark'}`}>
         <ForcePasswordChange
           currentProfile={currentUser}
           onPasswordChanged={handlePasswordChanged}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Profile } from '../types';
 import { db, INITIAL_PROFILES } from '../db';
-import { KeyRound, Shield, User, Building, Landmark, Mail, ChevronLeft, Send, Check, X, Eye, EyeOff, AlertCircle, MailOpen } from 'lucide-react';
+import { KeyRound, Shield, User, Building, Landmark, Mail, ChevronLeft, Send, Check, X, Eye, EyeOff, AlertCircle, MailOpen, Sun, Moon } from 'lucide-react';
 import bcrypt from 'bcryptjs';
 import { supabase } from '../supabaseClient';
 import { AppProperties } from '../appProperties';
@@ -9,9 +9,11 @@ import { AppProperties } from '../appProperties';
 interface LoginFormProps {
   onLoginSuccess: (profile: Profile, rememberMe: boolean) => void;
   profiles: Profile[];
+  theme?: 'dark' | 'light';
+  toggleTheme?: () => void;
 }
 
-export function LoginForm({ onLoginSuccess, profiles }: LoginFormProps) {
+export function LoginForm({ onLoginSuccess, profiles, theme, toggleTheme }: LoginFormProps) {
   const [email, setEmail] = useState(() => {
     return localStorage.getItem('aspire88_remembered_email') || '';
   });
@@ -84,7 +86,9 @@ export function LoginForm({ onLoginSuccess, profiles }: LoginFormProps) {
       }
 
       // 2. Fall back to secure database credentials verification (bcrypt encryption)
-      const expectedPw = found.password || found.temp_password || '';
+      const expectedPw = (found.is_temporary && found.temp_password)
+        ? found.temp_password
+        : (found.password || found.temp_password || '');
       let isMatch = false;
 
       if (expectedPw.startsWith('$2a$') || expectedPw.startsWith('$2b$')) {
@@ -216,11 +220,21 @@ export function LoginForm({ onLoginSuccess, profiles }: LoginFormProps) {
       <div className="absolute bottom-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-3xl" />
 
       {/* Brand logo headers */}
-      <div className="mb-6">
+      <div className="flex justify-between items-start gap-4 mb-6 relative z-10">
         <div>
           <h1 className="text-sm font-black text-slate-100 tracking-wider uppercase">Aspire88 Estates Corporation IES</h1>
           <p className="text-[10px] text-slate-500 uppercase tracking-widest font-mono font-bold">Integrated Enterprise System</p>
         </div>
+        {toggleTheme && theme && (
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="p-2 bg-slate-950/40 border border-slate-800 text-indigo-400 hover:text-indigo-300 rounded-xl transition-all cursor-pointer shadow-inner shrink-0"
+            title={theme === 'dark' ? 'Toggle Light Theme' : 'Toggle Dark Theme'}
+          >
+            {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </button>
+        )}
       </div>
 
       {!isForgotPasswordMode ? (
