@@ -143,11 +143,12 @@
 
 /* Professional Print Stylesheet */
 @media print {
-  html, body, #root, .min-h-screen, .flex-1, .flex, main {
+  /* Force light backgrounds and high-contrast dark text during print, regardless of dark mode settings */
+  html, body, #root, .min-h-screen, .flex-1, .flex, main, .theme-light, .theme-dark {
     background: #ffffff !important;
     background-color: #ffffff !important;
     color: #000000 !important;
-    font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif !important;
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
     font-size: 11pt !important;
     display: block !important;
     position: static !important;
@@ -156,12 +157,22 @@
     min-height: auto !important;
   }
 
-  header, aside, footer, nav, button, input, select, .print-hidden, .no-print {
+  /* Override any Tailwind overflow-hidden or absolute height constraints which break page flow */
+  *, .overflow-hidden, .overflow-y-auto, .overflow-x-auto, .flex-1 {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  /* Hide headers, sidebar navigation, buttons, inputs, modals and all elements designated as print-hidden */
+  header, aside, footer, nav, button, input, select, textarea, .print-hidden, .no-print, [role="dialog"], .fixed {
     display: none !important;
   }
 
+  /* Beautifully position and format the printable report to take the entire page space */
   .print-only-report {
     display: block !important;
+    visibility: visible !important;
     position: absolute !important;
     left: 0 !important;
     top: 0 !important;
@@ -174,7 +185,34 @@
     z-index: 9999999 !important;
   }
 
-  /* Force background printing for badges/tables */
+  .print-only-report * {
+    visibility: visible !important;
+    color: #000000 !important;
+  }
+
+  /* Make sure tables have clear boundaries in the printout */
+  .print-only-report table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin-top: 15px !important;
+  }
+
+  .print-only-report th,
+  .print-only-report td {
+    border: 1px solid #94a3b8 !important;
+    padding: 8px !important;
+    text-align: left !important;
+    color: #0f172a !important;
+  }
+
+  .print-only-report th {
+    background-color: #f1f5f9 !important;
+    font-weight: bold !important;
+    text-transform: uppercase !important;
+    font-size: 9pt !important;
+  }
+
+  /* Force browsers to print backgrounds if enabled by the user */
   * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;

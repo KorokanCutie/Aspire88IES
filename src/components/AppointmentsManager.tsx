@@ -3,7 +3,8 @@ import { Appointment, Profile, Client, Project, AppointmentType, AppointmentStat
 import { db, generateAlphaId } from '../db';
 import { useToast } from './Toast';
 import { AlertDialog } from './AlertDialog';
-import { Calendar, Plus, Search, Building, Clock, Lock, CheckCircle2, XCircle, X, Edit, Eye, ChevronLeft, ChevronRight, Printer, CalendarDays, Table } from 'lucide-react';
+import { Calendar, Plus, Search, Building, Clock, Lock, CheckCircle2, XCircle, X, Edit, Eye, ChevronLeft, ChevronRight, Printer, CalendarDays, Table, Download } from 'lucide-react';
+import { jsPDF } from 'jspdf';
 
 interface AppointmentsManagerProps {
   currentProfile: Profile;
@@ -399,6 +400,262 @@ export function AppointmentsManager({
     return `${format(startDate)} to ${format(endDate)}`;
   };
 
+  const handleExportPDF = () => {
+    try {
+      const doc = new jsPDF();
+      
+      // Page setup
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      
+      // Document Header Accent Banner
+      doc.setFillColor(15, 23, 42); // slate-900 background
+      doc.rect(0, 0, pageWidth, 24, 'F');
+      
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(13);
+      doc.text('ASPIRE88 ESTATES CORPORATION', 14, 15);
+      
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(156, 163, 175);
+      doc.text('INTEGRATED ENTERPRISE SYSTEM • SCHEDULING DIVISION', 14, 20);
+      
+      // Report Meta
+      const reportRef = `SEC-${new Date().getTime().toString().slice(-6)}`;
+      const generatedAt = new Date().toLocaleString();
+      doc.text(`REF: ${reportRef}`, pageWidth - 14, 13, { align: 'right' });
+      doc.text(`GENERATED: ${generatedAt}`, pageWidth - 14, 18, { align: 'right' });
+      
+      // Body Header
+      doc.setTextColor(15, 23, 42);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.text('OFFICIAL APPOINTMENTS SUMMARY REPORT', 14, 34);
+      
+      // Horizontal separator line
+      doc.setDrawColor(226, 232, 240);
+      doc.setLineWidth(0.5);
+      doc.line(14, 38, pageWidth - 14, 38);
+      
+      // Report filters block
+      doc.setFillColor(248, 250, 252); // soft grey bg
+      doc.rect(14, 42, pageWidth - 28, 18, 'F');
+      doc.setDrawColor(226, 232, 240);
+      doc.rect(14, 42, pageWidth - 28, 18, 'S');
+      
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(71, 85, 105);
+      doc.text(`Requested By: ${currentProfile.first_name} ${currentProfile.last_name} (${currentProfile.role})`, 18, 48);
+      doc.text(`Active Timeframe: ${getSelectedTimeframeLabel()}`, 18, 54);
+      doc.text(`Status Filter: ${statusFilter}`, pageWidth / 2 + 10, 48);
+      doc.text(`Search Term: ${searchTerm || 'None'}`, pageWidth / 2 + 10, 54);
+      
+      // Stats Block
+      const statW = (pageWidth - 28 - 8) / 3;
+      doc.setDrawColor(226, 232, 240);
+      
+      // Stat 1: Total
+      doc.rect(14, 64, statW, 14, 'S');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7);
+      doc.setTextColor(100, 116, 139);
+      doc.text('TOTAL SCHEDULED', 14 + statW/2, 69, { align: 'center' });
+      doc.setFontSize(10);
+      doc.setTextColor(15, 23, 42);
+      doc.text(String(visibleAppointments.length), 14 + statW/2, 75, { align: 'center' });
+      
+      // Stat 2: Open
+      doc.rect(14 + statW + 4, 64, statW, 14, 'S');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7);
+      doc.setTextColor(100, 116, 139);
+      doc.text('OPEN STATUS', 14 + statW + 4 + statW/2, 69, { align: 'center' });
+      doc.setFontSize(10);
+      doc.setTextColor(79, 70, 229); // Indigo
+      doc.text(String(visibleAppointments.filter(a => a.status === 'Open').length), 14 + statW + 4 + statW/2, 75, { align: 'center' });
+      
+      // Stat 3: Completed
+      doc.rect(14 + statW * 2 + 8, 64, statW, 14, 'S');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7);
+      doc.setTextColor(100, 116, 139);
+      doc.text('COMPLETED STATUS', 14 + statW * 2 + 8 + statW/2, 69, { align: 'center' });
+      doc.setFontSize(10);
+      doc.setTextColor(5, 150, 105); // Emerald
+      doc.text(String(visibleAppointments.filter(a => a.status === 'Done').length), 14 + statW * 2 + 8 + statW/2, 75, { align: 'center' });
+      
+      // Table Header
+      let currentY = 86;
+      doc.setFillColor(241, 245, 249);
+      doc.rect(14, currentY, pageWidth - 28, 8, 'F');
+      doc.setDrawColor(203, 213, 225);
+      doc.rect(14, currentY, pageWidth - 28, 8, 'S');
+      
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.5);
+      doc.setTextColor(71, 85, 105);
+      
+      doc.text('APT REF', 18, currentY + 5.5);
+      doc.text('CLIENT NAME', 38, currentY + 5.5);
+      doc.text('CATEGORY & PROJECT', 76, currentY + 5.5);
+      doc.text('DATE & TIME', 124, currentY + 5.5);
+      doc.text('ASSIGNED AGENT', 160, currentY + 5.5);
+      doc.text('STATUS', 186, currentY + 5.5);
+      
+      currentY += 8;
+      
+      // Table Body
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      
+      visibleAppointments.forEach((appt) => {
+        // Page break safety check
+        if (currentY > pageHeight - 32) {
+          doc.addPage();
+          currentY = 20;
+          
+          // Re-draw small header on new pages
+          doc.setFillColor(15, 23, 42);
+          doc.rect(0, 0, pageWidth, 12, 'F');
+          doc.setTextColor(255, 255, 255);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(9);
+          doc.text('ASPIRE88 ESTATES CORPORATION — SCHEDULING REPORT', 14, 8);
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(7.5);
+          
+          currentY = 22;
+          
+          // Draw table headers again on new page
+          doc.setFillColor(241, 245, 249);
+          doc.rect(14, currentY, pageWidth - 28, 8, 'F');
+          doc.setDrawColor(203, 213, 225);
+          doc.rect(14, currentY, pageWidth - 28, 8, 'S');
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(71, 85, 105);
+          doc.text('APT REF', 18, currentY + 5.5);
+          doc.text('CLIENT NAME', 38, currentY + 5.5);
+          doc.text('CATEGORY & PROJECT', 76, currentY + 5.5);
+          doc.text('DATE & TIME', 124, currentY + 5.5);
+          doc.text('ASSIGNED AGENT', 160, currentY + 5.5);
+          doc.text('STATUS', 186, currentY + 5.5);
+          
+          currentY += 8;
+          doc.setFont('helvetica', 'normal');
+        }
+        
+        const client = clients.find(c => c.id === appt.client_id);
+        const clientName = client ? `${client.first_name} ${client.last_name}` : 'Unknown Client';
+        const proj = projects.find(p => p.id === appt.project_id);
+        const projName = proj ? proj.name : 'Unknown Project';
+        const agent = profiles.find(p => p.id === appt.agent_id);
+        const agentName = agent ? `${agent.first_name} ${agent.last_name}` : 'Unknown';
+        const apptDate = new Date(appt.appointment_time).toLocaleString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+        
+        // Draw grid row lines
+        doc.setDrawColor(241, 245, 249);
+        doc.line(14, currentY + 10, pageWidth - 14, currentY + 10);
+        
+        doc.setTextColor(15, 23, 42);
+        // APT Ref
+        doc.setFont('courier', 'bold');
+        doc.text(appt.id, 18, currentY + 6);
+        doc.setFont('helvetica', 'normal');
+        
+        // Client Name
+        doc.text(clientName.length > 20 ? clientName.slice(0, 18) + '..' : clientName, 38, currentY + 6);
+        
+        // Category / Project details
+        doc.setFont('helvetica', 'bold');
+        doc.text(appt.appointment_type, 76, currentY + 4.5);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.5);
+        doc.setTextColor(100, 116, 139);
+        doc.text(projName.length > 30 ? projName.slice(0, 28) + '..' : projName, 76, currentY + 8);
+        doc.setFontSize(7.5);
+        doc.setTextColor(15, 23, 42);
+        
+        // Date & Time
+        doc.text(apptDate, 124, currentY + 6);
+        
+        // Assigned Agent
+        doc.text(agentName.length > 16 ? agentName.slice(0, 14) + '..' : agentName, 160, currentY + 6);
+        
+        // Status with color coding
+        if (appt.status === 'Open') {
+          doc.setTextColor(79, 70, 229); // Indigo
+          doc.setFont('helvetica', 'bold');
+        } else if (appt.status === 'Done') {
+          doc.setTextColor(5, 150, 105); // Emerald
+          doc.setFont('helvetica', 'bold');
+        } else {
+          doc.setTextColor(220, 38, 38); // Rose
+          doc.setFont('helvetica', 'bold');
+        }
+        doc.text(appt.status, 186, currentY + 6);
+        
+        // Restore styling defaults
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(15, 23, 42);
+        
+        currentY += 10;
+      });
+      
+      if (visibleAppointments.length === 0) {
+        doc.setFont('helvetica', 'italic');
+        doc.setTextColor(148, 163, 184);
+        doc.text('No appointments found matching the selected filter criteria.', pageWidth/2, currentY + 8, { align: 'center' });
+        currentY += 14;
+      }
+      
+      // Footer and Sign-off
+      if (currentY > pageHeight - 36) {
+        doc.addPage();
+        currentY = 25;
+      } else {
+        currentY = Math.max(currentY + 10, pageHeight - 45);
+      }
+      
+      doc.setDrawColor(226, 232, 240);
+      doc.line(14, currentY, pageWidth - 14, currentY);
+      
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(6.5);
+      doc.setTextColor(148, 163, 184);
+      doc.text('This document represents an official administrative report of Aspire88 Estates Corporation.', 14, currentY + 5);
+      doc.text('All entries are subject to strict compliance rules under active Row Level Security.', 14, currentY + 8);
+      
+      // Signature Line
+      doc.setDrawColor(148, 163, 184);
+      doc.line(pageWidth - 62, currentY + 12, pageWidth - 14, currentY + 12);
+      
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.setTextColor(71, 85, 105);
+      doc.text(`${currentProfile.first_name} ${currentProfile.last_name}`, pageWidth - 38, currentY + 16, { align: 'center' });
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      doc.text(currentProfile.role.toUpperCase(), pageWidth - 38, currentY + 20, { align: 'center' });
+      
+      // Save PDF
+      doc.save(`Aspire88-Schedule-${new Date().toISOString().split('T')[0]}.pdf`);
+      toast('Printable PDF Report successfully compiled and downloaded.', 'success');
+    } catch (err: any) {
+      console.error('Error compiling PDF:', err);
+      toast('Failed to compile PDF. Reverting to printer stream.', 'error');
+      window.print();
+    }
+  };
+
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
     const month = date.getMonth();
@@ -468,18 +725,15 @@ export function AppointmentsManager({
         </div>
 
         <div className="flex flex-wrap items-center gap-2 self-start sm:self-center">
-          {/* Print Schedule Button */}
+          {/* Export PDF Button */}
           <button
             type="button"
-            onClick={() => {
-              window.focus();
-              window.print();
-            }}
-            className="bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 px-3.5 py-2 text-xs font-semibold rounded-xl flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
-            title="Generate a clean, printable view of currently filtered appointments"
+            onClick={handleExportPDF}
+            className="bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-500 px-3.5 py-2 text-xs font-semibold rounded-xl flex items-center gap-1.5 shadow-md shadow-indigo-950/20 transition-all cursor-pointer"
+            title="Export currently filtered appointments list directly to a clean PDF report"
           >
-            <Printer className="w-3.5 h-3.5 text-slate-400" />
-            <span>Print Schedule</span>
+            <Download className="w-3.5 h-3.5" />
+            <span>Export PDF</span>
           </button>
 
           {/* Toggle Calendar View Button */}
